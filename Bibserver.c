@@ -1,12 +1,10 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include<stdio.h>
+#include<string.h>
 
-#define BUFF 1000
-
-struct file_record
+struct
 {
-    char* autore[];
     char* titolo;
     char* editore;
     int anno;
@@ -15,26 +13,62 @@ struct file_record
     char* luogo_pubblicazione;
     char* descrizione_fisica;
     char* prestito;
-};
+    char* autore[];
+}typedef Book;
 
 
 int main(int argc, char* argv[]){
+    if(argc!=4){
+        printf("Not the right amount of args\n");
+        _exit(EXIT_FAILURE);
+    }
     char* name_bib = argv[1];
     char* file_name = argv[2];
     int w = atoi(argv[3]);
-    File* fin = fopen(file_name,"r");
-    char testo[BUFF];
-    int len=0;
+    FILE* fin = fopen(file_name,"r");
+    size_t size=400;
+    char* riga;
+    int nchar_readed;
+    char* field;
+    char* key;
+    char* value;
+    Book book;
+    book.prestito=NULL;
     if(fin){
-        while(!feof(fin) && len<BUFF-1 && fgets(&testo[len],BUFF-len,fin)){
-            len=strlen(testo);
+        while((nchar_readed=getline(&riga,&size,fin)) && !feof(fin)){
+            if(nchar_readed!=1)
+            {
+                field=strtok(riga,";");
+                int n_autori=0;
+                do{
+                    key= strtok(field,":");
+                    value = strtok(NULL,":");
+                    if(strcmp(key,"autore") == 0){
+                        book.autore[n_autori] = value;
+                        n_autori++;
+                    }else if(strcmp(key,"titolo") == 0){
+                        book.titolo = value;
+                    }else if(strcmp(key,"editore") == 0){
+                        book.editore = value;
+                    }else if(strcmp(key,"nota") == 0){
+                        book.nota = value;
+                    }else if(strcmp(key,"collocazione") == 0){
+                        book.collocazione = value;
+                    }else if(strcmp(key,"luogo_pubblicazione") == 0){
+                        book.luogo_pubblicazione = value;
+                    }else if(strcmp(key,"anno") == 0){
+                        book.anno = atoi(value);
+                    }else if(strcmp(key,"prestito") == 0){
+                        book.prestito = value;
+                    }else if(strcmp(key,"descrizione_fisica") == 0){
+                        book.descrizione_fisica = value;
+                    }
+                printf("%s\n",field);
+                }while((field=strtok(NULL,";"))!=NULL);
+            }
         }
         if(ferror(fin)){
             perror("Errore durante la lettura");
-        }else{
-            if(!feof(fin)){
-                printf("Buffer pieno.\n");
-            }
         }
         fclose(fin);
     }else{
