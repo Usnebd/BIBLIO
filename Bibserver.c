@@ -101,7 +101,6 @@ Book* get_record(char* riga, Book* book){
             n_autori++;
         }else if(strcmp(filtered_key,"titolo") == 0){
             book->titolo = unfiltered_value;
-            printf("%s\n",book->titolo);
         }else if(strcmp(filtered_key,"editore") == 0){
             book->editore = unfiltered_value;
         }else if(strcmp(filtered_key,"nota") == 0){
