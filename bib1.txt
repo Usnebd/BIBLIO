@@ -1,4 +1,4 @@
-autore: Waiss, Pierre; autore: Leroy, Xavier;  titolo: Le langage CAML; editore: InterEditions; anno: 1993; nota: Edizione Francese; collocazione: KK.Hl32 ; luogo_pubblicazione: Paris; descrizione_fisica: 406p., softcov,  13 cm;
+autore: Waiss, Pierre; autore: Leroy, Xavier; titolo: Le langage CAML; editore: InterEditions; anno: 1993; nota: Edizione Francese; collocazione: KK.Hl32 ; luogo_pubblicazione: Paris; descrizione_fisica: 406p., softcov,  13 cm;
 
 autore: Tanenbaum, Andrew S.; titolo: Computer Networks(Third Edition); editore: Prentice Hall PTR; anno: 1996; collocazione: CN.45; luogo_pubblicazione: Upper Saddle River, NY; descrizione_fisica: 813 p., softcov,  13 cm;
 

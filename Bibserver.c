@@ -2,7 +2,7 @@
 #include<unistd.h>
 #include<stdio.h>
 #include<string.h>
-
+#define SIZE 400
 struct
 {
     char* titolo;
@@ -16,6 +16,7 @@ struct
     char* autore[];
 }typedef Book;
 
+int countAttributes(char* str);
 
 int main(int argc, char* argv[]){
     if(argc!=4){
@@ -25,54 +26,81 @@ int main(int argc, char* argv[]){
     char* name_bib = argv[1];
     char* file_name = argv[2];
     int w = atoi(argv[3]);
-    FILE* fin = fopen(file_name,"r");
-    size_t size=400;
-    char* riga;
+    size_t size=SIZE;
+    char* riga=(char*)malloc(sizeof(char)*SIZE);
     int nchar_readed;
-    char* field;
-    char* key;
-    char* value;
-    Book book;
-    book.prestito=NULL;
+    char* unfiltered_key;
+    char* unfiltered_value;
+    FILE* fin = fopen(file_name,"r");
     if(fin){
         while((nchar_readed=getline(&riga,&size,fin)) && !feof(fin)){
             if(nchar_readed!=1)
             {
-                field=strtok(riga,";");
+                Book book;
+                book.prestito=NULL;
+                char temp_riga[strlen(riga)];
+                strcpy(temp_riga,riga);
+                int n_attributes=countAttributes(temp_riga);
+                char* field[n_attributes];
+                char* str=strtok(riga,";");
+                field[0]=(char*)malloc(strlen(str));
+                strcpy(field[0],str);
+                for(int i=1;i<n_attributes;i++){
+                    str = strtok(NULL,";");
+                    field[i]=(char*)malloc(strlen(str));
+                    strcpy(field[i],str);
+                }
                 int n_autori=0;
-                do{
-                    key= strtok(field,":");
-                    value = strtok(NULL,":");
-                    if(strcmp(key,"autore") == 0){
-                        book.autore[n_autori] = value;
+                for(int i=0;i<n_attributes;i++){
+                    unfiltered_key = (char*)malloc(100);
+                    unfiltered_value = (char*)malloc(100);
+                    char temp_field[strlen(field[i])];
+                    strcpy(temp_field,field[i]);
+                    strcpy(unfiltered_key,strtok(temp_field,":"));
+                    strcpy(unfiltered_value,strtok(NULL,":"));
+                    char* filtered_key=strtok(unfiltered_key," ");
+                    unfiltered_value=unfiltered_value+1;
+                    if(strcmp(filtered_key,"autore") == 0){
+                        book.autore[n_autori] = unfiltered_value;
                         n_autori++;
-                    }else if(strcmp(key,"titolo") == 0){
-                        book.titolo = value;
-                    }else if(strcmp(key,"editore") == 0){
-                        book.editore = value;
-                    }else if(strcmp(key,"nota") == 0){
-                        book.nota = value;
-                    }else if(strcmp(key,"collocazione") == 0){
-                        book.collocazione = value;
-                    }else if(strcmp(key,"luogo_pubblicazione") == 0){
-                        book.luogo_pubblicazione = value;
-                    }else if(strcmp(key,"anno") == 0){
-                        book.anno = atoi(value);
-                    }else if(strcmp(key,"prestito") == 0){
-                        book.prestito = value;
-                    }else if(strcmp(key,"descrizione_fisica") == 0){
-                        book.descrizione_fisica = value;
+                    }else if(strcmp(filtered_key,"titolo") == 0){
+                        book.titolo = unfiltered_value;
+                    }else if(strcmp(filtered_key,"editore") == 0){
+                        book.editore = unfiltered_value;
+                    }else if(strcmp(filtered_key,"nota") == 0){
+                        book.nota = unfiltered_value;
+                    }else if(strcmp(filtered_key,"collocazione") == 0){
+                        book.collocazione = unfiltered_value;
+                    }else if(strcmp(filtered_key,"luogo_pubblicazione") == 0){
+                        book.luogo_pubblicazione = unfiltered_value;
+                    }else if(strcmp(filtered_key,"anno") == 0){
+                        book.anno = atoi(unfiltered_value);
+                    }else if(strcmp(filtered_key,"prestito") == 0){
+                        book.prestito = unfiltered_value;
+                    }else if(strcmp(filtered_key,"descrizione_fisica") == 0){
+                        book.descrizione_fisica = unfiltered_value;
                     }
-                printf("%s\n",field);
-                }while((field=strtok(NULL,";"))!=NULL);
+                }
             }
         }
         if(ferror(fin)){
             perror("Errore durante la lettura");
         }
+
         fclose(fin);
     }else{
         perror("Errore apertura file");
     }
     _exit(EXIT_SUCCESS);
+}
+
+
+
+int countAttributes(char* riga){
+    int count=0;
+    strtok(riga,";");
+    while(strtok(NULL,";")!=NULL){
+        count++;
+    }
+    return count;
 }
