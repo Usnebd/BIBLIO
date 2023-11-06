@@ -2,7 +2,12 @@
 #include<unistd.h>
 #include<stdio.h>
 #include<string.h>
+#include<sys/socket.h>
+#include<sys/un.h>
+#include<sys/types.h>
 #define SIZE 400
+#define UNIX_PATH_MAX 80
+#define SOCKNAME "welcomeSocket"
 struct
 {
     char* titolo;
@@ -61,7 +66,15 @@ int main(int argc, char* argv[]){
             }
         }
         FILE* flog=fopen(strcat(strtok(name_bib,".txt"),".log"),"w");
-        
+
+        struct sockaddr_un sa_server;
+        struct sockaddr sa_client;
+        strncpy(sa_server.sun_path,SOCKNAME,UNIX_PATH_MAX);
+        sa_server.sun_family=AF_UNIX;
+        int sfd=socket(AF_UNIX,SOCK_STREAM,0);
+        bind(sfd,(struct sockaddr*)&sa_server,sizeof(sa_server));
+        listen(sfd,SOMAXCONN);
+        int fdc = accept(sfd,&sa_client,0);
         if(ferror(flog)){
             perror("Errore durante la lettura del file di log\n");
         }
