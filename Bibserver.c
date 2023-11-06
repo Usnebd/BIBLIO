@@ -16,6 +16,14 @@ struct
     char* autore[];
 }typedef Book;
 
+typedef enum { false, true } bool;
+
+struct n{
+    Book* val;
+    struct n* next;
+};
+typedef struct n Node;
+
 int countAttributes(char* str);
 Book* get_record(char* riga, Book* book);
 
@@ -31,6 +39,8 @@ int main(int argc, char* argv[]){
     char* riga=(char*)malloc(sizeof(char)*SIZE);
     int nchar_readed;
     FILE* fin = fopen(file_name,"r");
+    Node* head=NULL;
+    bool firstIteration=true;
     if(fin){
         while((nchar_readed=getline(&riga,&size,fin)) && !feof(fin)){
             if(nchar_readed!=1)
@@ -39,6 +49,15 @@ int main(int argc, char* argv[]){
                 strcpy(temp_riga,riga);
                 Book* book = (Book*)malloc(sizeof(Book));
                 get_record(riga,book);
+                Node* elem=(Node*)malloc(sizeof(Node));
+                elem->val=book;
+                if(firstIteration){
+                    head=elem;
+                    firstIteration=false;
+                }else{
+                    elem->next=head;
+                    head=elem;
+                }
             }
         }
         if(ferror(fin)){
