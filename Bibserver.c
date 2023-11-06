@@ -60,10 +60,15 @@ int main(int argc, char* argv[]){
                 }
             }
         }
-        if(ferror(fin)){
-            perror("Errore durante la lettura");
+        FILE* flog=fopen(strcat(strtok(name_bib,".txt"),".log"),"w");
+        
+        if(ferror(flog)){
+            perror("Errore durante la lettura del file di log\n");
         }
-
+        if(ferror(fin)){
+            perror("Errore durante la lettura del file contentente i record\n");
+        }
+        fclose(flog);
         fclose(fin);
     }else{
         perror("Errore apertura file");
