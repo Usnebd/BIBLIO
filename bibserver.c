@@ -5,9 +5,18 @@
 #include<sys/socket.h>
 #include<sys/un.h>
 #include<sys/types.h>
+#include<sys/select.h>
+#include"queue.h"
 #define SIZE 400
 #define UNIX_PATH_MAX 80
 #define SOCKNAME "welcomeSocket"
+
+typedef struct{
+    Queue* q;
+    fd_set* clients;
+}arg_t;
+
+
 struct
 {
     char* titolo;
@@ -16,18 +25,18 @@ struct
     char* nota;
     char* collocazione;
     char* luogo_pubblicazione;
-    char* descrizione_fisica;
+    char* descrizione_fisica;  
     char* prestito;
     char* autore[];
 }typedef Book;
 
 typedef enum { false, true } bool;
 
-struct n{
+struct k{
     Book* val;
-    struct n* next;
+    struct k* next;
 };
-typedef struct n Node;
+typedef struct k Elem;
 
 int countAttributes(char* str);
 Book* get_record(char* riga, Book* book);
@@ -44,7 +53,7 @@ int main(int argc, char* argv[]){
     char* riga=(char*)malloc(sizeof(char)*SIZE);
     int nchar_readed;
     FILE* fin = fopen(file_name,"r");
-    Node* head=NULL;
+    Elem* head=NULL;
     bool firstIteration=true;
     if(fin){
         while((nchar_readed=getline(&riga,&size,fin)) && !feof(fin)){
@@ -54,7 +63,7 @@ int main(int argc, char* argv[]){
                 strcpy(temp_riga,riga);
                 Book* book = (Book*)malloc(sizeof(Book));
                 get_record(riga,book);
-                Node* elem=(Node*)malloc(sizeof(Node));
+                Elem* elem=(Elem*)malloc(sizeof(Elem));
                 elem->val=book;
                 if(firstIteration){
                     head=elem;
@@ -75,6 +84,7 @@ int main(int argc, char* argv[]){
         bind(sfd,(struct sockaddr*)&sa_server,sizeof(sa_server));
         listen(sfd,SOMAXCONN);
         int fdc = accept(sfd,&sa_client,0);
+
         if(ferror(flog)){
             perror("Errore durante la lettura del file di log\n");
         }
