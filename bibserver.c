@@ -6,13 +6,12 @@
 #include<sys/un.h>
 #include<sys/types.h>
 #include<sys/select.h>
-#include"queue.h"
+#include "unboundedqueue.h"
 #define SIZE 400
 #define UNIX_PATH_MAX 80
-#define SOCKNAME "welcomeSocket"
 
 typedef struct{
-    Queue* q;
+    Queue_t* q;
     fd_set* clients;
 }arg_t;
 
@@ -48,7 +47,7 @@ int main(int argc, char* argv[]){
     }
     char* name_bib = argv[1];
     char* file_name = argv[2];
-    int w = atoi(argv[3]);
+    int n_workers = atoi(argv[3]);
     size_t size=SIZE;
     char* riga=(char*)malloc(sizeof(char)*SIZE);
     int nchar_readed;
@@ -78,12 +77,13 @@ int main(int argc, char* argv[]){
 
         struct sockaddr_un sa_server;
         struct sockaddr sa_client;
-        strncpy(sa_server.sun_path,SOCKNAME,UNIX_PATH_MAX);
+        strncpy(sa_server.sun_path,name_bib,UNIX_PATH_MAX);
         sa_server.sun_family=AF_UNIX;
         int sfd=socket(AF_UNIX,SOCK_STREAM,0);
         bind(sfd,(struct sockaddr*)&sa_server,sizeof(sa_server));
         listen(sfd,SOMAXCONN);
-        int fdc = accept(sfd,&sa_client,0);
+
+        //int fdc = accept(sfd,&sa_client,0);
 
         if(ferror(flog)){
             perror("Errore durante la lettura del file di log\n");
@@ -98,6 +98,8 @@ int main(int argc, char* argv[]){
     }
     _exit(EXIT_SUCCESS);
 }
+
+
 
 
 
