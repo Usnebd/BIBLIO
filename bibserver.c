@@ -1,44 +1,6 @@
-#include<stdlib.h>
-#include<unistd.h>
-#include<stdio.h>
-#include<string.h>
-#include<sys/socket.h>
-#include<sys/un.h>
-#include<sys/types.h>
-#include<sys/select.h>
-#include "unboundedqueue.h"
+#include"bibserver.h"
 #define SIZE 400
 #define UNIX_PATH_MAX 80
-
-typedef struct{
-    Queue_t* q;
-    fd_set* clients;
-}arg_t;
-
-
-struct
-{
-    char* titolo;
-    char* editore;
-    int anno;
-    char* nota;
-    char* collocazione;
-    char* luogo_pubblicazione;
-    char* descrizione_fisica;  
-    char* prestito;
-    char* autore[];
-}typedef Book;
-
-typedef enum { false, true } bool;
-
-struct k{
-    Book* val;
-    struct k* next;
-};
-typedef struct k Elem;
-
-int countAttributes(char* str);
-Book* get_record(char* riga, Book* book);
 
 int main(int argc, char* argv[]){
     if(argc!=4){
@@ -49,7 +11,7 @@ int main(int argc, char* argv[]){
     char* file_name = argv[2];
     int n_workers = atoi(argv[3]);
     size_t size=SIZE;
-    char* riga=(char*)malloc(sizeof(char)*SIZE);
+    char* riga=(char*)malloc(SIZE);
     int nchar_readed;
     FILE* fin = fopen(file_name,"r");
     Elem* head=NULL;
@@ -60,7 +22,7 @@ int main(int argc, char* argv[]){
             {   
                 char temp_riga[strlen(riga)];
                 strcpy(temp_riga,riga);
-                Book* book = (Book*)malloc(sizeof(Book));
+                Book_t* book;
                 get_record(riga,book);
                 Elem* elem=(Elem*)malloc(sizeof(Elem));
                 elem->val=book;
@@ -79,11 +41,28 @@ int main(int argc, char* argv[]){
         struct sockaddr sa_client;
         strncpy(sa_server.sun_path,name_bib,UNIX_PATH_MAX);
         sa_server.sun_family=AF_UNIX;
-        int sfd=socket(AF_UNIX,SOCK_STREAM,0);
-        bind(sfd,(struct sockaddr*)&sa_server,sizeof(sa_server));
-        listen(sfd,SOMAXCONN);
+        int server=socket(AF_UNIX,SOCK_STREAM,0);
+        bind(server,(struct sockaddr*)&sa_server,sizeof(sa_server));
+        listen(server,SOMAXCONN);
+        fd_set allFDs, readFDs;
+        FD_ZERO(&allFDs);
+        FD_SET(server,&allFDs);
+        int fdMax=server;
+        pthread_mutex_t m;
+        pthread_mutex_init(&m,NULL);
+        Queue_t* q= initQueue();
 
-        //int fdc = accept(sfd,&sa_client,0);
+        arg_t threadArgs;
+        threadArgs.q=q;
+        threadArgs.mutex=&m;
+        threadArgs.fdMax=&fdMax;
+        threadArgs.clients=&allFDs;
+
+        for(int j=0;j<n_workers;j++){
+            pthread_t tid;
+            pthread_create(&tid,NULL,worker,&threadArgs);
+            pthread_detach(tid);
+        }
 
         if(ferror(flog)){
             perror("Errore durante la lettura del file di log\n");
@@ -99,9 +78,9 @@ int main(int argc, char* argv[]){
     _exit(EXIT_SUCCESS);
 }
 
-
-
-
+void aggiornaMax(fd_set set, int* max ){
+	while(!FD_ISSET(*max,&set)) *max--;
+}
 
 int countAttributes(char* riga){
     int count=0;
@@ -112,7 +91,7 @@ int countAttributes(char* riga){
     return count;
 }
 
-Book* get_record(char* riga, Book* book){
+Book_t* get_record(char* riga, Book_t* book){
     book->prestito=NULL;
     char* unfiltered_key;
     char* unfiltered_value;
@@ -167,4 +146,19 @@ Book* get_record(char* riga, Book* book){
         }
     }
     return book;
+}
+
+void* worker(void* args){
+    Queue_t* q=((arg_t*)args)->q;
+	int* fdMax=((arg_t*)args)->fdMax;
+	fd_set* clients=((arg_t*)args)->clients;
+
+	pthread_mutex_t* m=((arg_t*)args)->mutex;
+	char buf[N];
+	while(1){
+		int* fd=(int*)pop(q);
+		
+		free(fd);
+	}
+	return NULL;
 }
