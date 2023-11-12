@@ -1,7 +1,11 @@
 #ifndef QUEUE_H_
 #define QUEUE_H_
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <errno.h>
 #include <pthread.h>
+#include "util.h"
 
 /** Elemento della coda.
  *

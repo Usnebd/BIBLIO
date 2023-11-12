@@ -1,14 +1,14 @@
-#include<stdlib.h>
-#include<unistd.h>
-#include<stdio.h>
-#include<string.h>
-#include<sys/socket.h>
-#include<sys/un.h>
-#include<sys/types.h>
-#include<sys/select.h>
-#include "structures.h"
-#include "unboundedqueue.h"
+#include<time.h>
+#include"structures.h"
+#include"bookToRecord.h"
+#include"unboundedqueue.h"
+#define SIZE 400
+#define UNIX_PATH_MAX 80
+#define N 100
 
 int countAttributes(char* str);
-Book* get_record(char* riga, Book* book);
+Book_t* recordToBook(char* riga, Book_t* book);
 void* worker(void* args);
+bool matchElemBook(Book_t* book, Book_t* bookNode);
+void checkFromConf(char* name_bib);
+void deleteFromConf(char* name_bib);

@@ -1,8 +1,17 @@
-#define MSG_QUERY "Q"
-#define MSG_LOAN "L"
-#define MSG_RECORD "R"
-#define MSG_NO "N"
-#define MSG_ERROR "E"
+#define MSG_QUERY 'Q'
+#define MSG_LOAN 'L'
+#define MSG_RECORD 'R'
+#define MSG_NO 'N'
+#define MSG_ERROR 'E'
+#include<stdlib.h>
+#include<unistd.h>
+#include<stdio.h>
+#include<string.h>
+#include<sys/socket.h>
+#include<sys/un.h>
+#include<sys/types.h>
+#include<sys/select.h>
+#include "unboundedqueue.h"
 
 struct
 {
@@ -14,7 +23,7 @@ struct
     char* luogo_pubblicazione;
     char* descrizione_fisica;  
     char* prestito;
-    char* autore[];
+    struct z* autore;
 }typedef Book_t;
 
 typedef enum { false, true } bool;
@@ -25,10 +34,17 @@ struct k{
 };
 typedef struct k Elem;
 
+struct z{
+    char* val;
+    struct z* next;
+};
+typedef struct z NodoAutore;
+
 typedef struct {
 	Queue_t* q;
 	fd_set* clients;
 	int* fdMax;
+    Elem* list;
 	pthread_mutex_t* mutex;
 }
 arg_t;
