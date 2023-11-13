@@ -36,11 +36,14 @@ int main(int argc, char* argv[]){
                 }
             }
         }
+        char path[strlen(name_bib)+1];
+        strcpy(path,"./");
+        strcat(path,name_bib);
         FILE* flog=fopen(strcat(name_bib,".log"),"w");
         //aggiungere if(flog)
         struct sockaddr_un sa_server;
-        struct sockaddr sa_client;
-        strncpy(sa_server.sun_path,name_bib,UNIX_PATH_MAX);
+        unlink(path);
+        strncpy(sa_server.sun_path,path,UNIX_PATH_MAX);
         sa_server.sun_family=AF_UNIX;
         int welcomeSocket=socket(AF_UNIX,SOCK_STREAM,0);
         bind(welcomeSocket,(struct sockaddr*)&sa_server,sizeof(sa_server));
@@ -48,8 +51,7 @@ int main(int argc, char* argv[]){
     
         fd_set set, rdset;
         FD_ZERO(&set);
-        FD_SET(welcomeSocket,&set);
-        int fd_num=0, fd_c,fdMax=welcomeSocket, nread;
+        int fd_num=0;
         if (welcomeSocket > fd_num) fd_num = welcomeSocket;
         pthread_mutex_t m;
         pthread_mutex_init(&m,NULL);
@@ -57,7 +59,7 @@ int main(int argc, char* argv[]){
         arg_t threadArgs;
         threadArgs.q=q;
         threadArgs.mutex=&m;
-        threadArgs.fdMax=&fdMax;
+        threadArgs.fd_num=&fd_num;
         threadArgs.list=head;
         threadArgs.clients=&set;
         for(int j=0;j<n_workers;j++){
@@ -68,26 +70,25 @@ int main(int argc, char* argv[]){
         while(1){
             pthread_mutex_lock(&m);
             rdset=set;
-            int currMax=fdMax;
+		    int currMax=fd_num;
             pthread_mutex_unlock(&m);
             select(currMax+1,&rdset,NULL,NULL,NULL);
             pthread_mutex_lock(&m);
-            currMax = fdMax;
+            currMax = fd_num;
             pthread_mutex_unlock(&m);
             for (int i=0;i<currMax+1;i++){
                 if (FD_ISSET(i,&rdset)){
                     if (i==welcomeSocket){
-                        fd_c=accept(welcomeSocket, NULL,NULL);
+                        int fd_c=accept(welcomeSocket, NULL,0);
                         printf("E' arrivato un cliente \n");
                         pthread_mutex_lock(&m);
                         FD_SET(fd_c,&set);
-                        if(fd_c>fdMax)
-                            fdMax=fd_c;
-                        pthread_mutex_unlock(&m);
-                    }else{
+                        if(fd_c>fd_num)
+                            fd_num=fd_c;
                         int* client=malloc(sizeof(int));
                         *client=i;
                         push(q,client);
+                        pthread_mutex_unlock(&m);
                     }
                 }
             }
@@ -103,6 +104,11 @@ int main(int argc, char* argv[]){
     }  
     deleteFromConf(name_bib); //cancello name_bib da bib.conf perché il server non è più operativo
     _exit(EXIT_SUCCESS);
+}
+
+bool checkAutore(Book_t* bookNode){
+    // Controlla il puntatore `bookNode->autore`.
+    return bookNode->autore != NULL;
 }
 
 void checkFromConf(char* name_bib){
@@ -128,7 +134,6 @@ void checkFromConf(char* name_bib){
 
 void deleteFromConf(char* name_bib){
     FILE* fconf=fopen("bib.conf","a");
-    size_t size=N;
     char* buffer=(char*)malloc(N);
     if(fconf==NULL){
         perror("errore apertura file bib.conf\n");
@@ -147,6 +152,10 @@ void deleteFromConf(char* name_bib){
     }
     fclose(fconf);
     free(buffer);
+}
+
+void aggiornaMax(fd_set set, int* max ){
+	while(!FD_ISSET(*max,&set)) *max--;
 }
 
 int countAttributes(char* riga){
@@ -242,7 +251,7 @@ void* worker(void* args){
     struct tm* data = localtime(&timestamp);
     //prendo la data
     Queue_t* q=((arg_t*)args)->q;
-	int* fdMax=((arg_t*)args)->fdMax;
+	int* fd_num=((arg_t*)args)->fd_num;
 	fd_set* clients=((arg_t*)args)->clients;
     Elem* head=((arg_t*)args)->list;
     Elem node=*head;
@@ -253,11 +262,14 @@ void* worker(void* args){
 		int fd=*(int*)pop(q);
         char type;
 		read(fd,&type,1);
+        printf("read: %c\n",type);
         read(fd,&length,sizeof(unsigned int));
+        printf("read: %ld\n",length);
         free(buff);
         buff=(char*)malloc(length);
         read(fd,buff,length);
-        Book_t* book;
+        Book_t* book=(Book_t*)malloc(sizeof(Book_t));
+        book->autore=(NodoAutore*)malloc(sizeof(NodoAutore));
         recordToBook(buff,book);
         free(buff);
         bool msgReturnType=false;
@@ -312,20 +324,26 @@ void* worker(void* args){
                 break;
         }
 		close(fd);
+        free(book->autore);
+        free(book);
+        aggiornaMax(*clients,fd_num);
 	}
 	return NULL;
 }
 
 bool matchElemBook(Book_t* book, Book_t* bookNode){
     bool match=true;
-    int length=0;
-    while(bookNode->autore->val!=NULL){
-        if(strcmp(bookNode->autore->val,book->autore->val)!=0){
-            match=false;
-        }else{
-            match=true;
+    if(book->autore!=NULL){
+        if (bookNode->autore != NULL && bookNode->autore->val != NULL) {
+        while(bookNode->autore->val!=NULL){
+            if(strcmp(bookNode->autore->val,book->autore->val)!=0){
+                match=false;
+            }else{
+                match=true;
+            }
+            bookNode->autore=bookNode->autore->next;
         }
-        bookNode->autore=bookNode->autore->next;
+    }
     }
     if(book->titolo!=NULL){
         if(strcmp(bookNode->titolo,book->titolo)!=0){

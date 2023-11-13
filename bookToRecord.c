@@ -2,17 +2,20 @@
 #include"structures.h"
 
 void bookToRecord(Book_t* book, char* data,char msgType){
-    strcpy(data, "autore: ");
-    strcat(data, book->autore->val);
-    strcat(data, ";");
     
-    while(book->autore!=NULL){
-        strcat(data, " autore: ");
-        strcat(data, book->autore->val);
-        strcat(data, ";");
-        book->autore=book->autore->next;
+    if(book->autore!=NULL){
+        if(book->autore->val!=NULL){
+            strcpy(data, "autore: ");
+            strcat(data, book->autore->val);
+            strcat(data, ";");
+            while(book->autore!=NULL){
+                strcat(data, " autore: ");
+                strcat(data, book->autore->val);
+                strcat(data, ";");
+                book->autore=book->autore->next;
+            }
+        }
     }
-
     if((book->titolo)!=NULL){
         strcat(data," titolo: ");
         strcat(data,book->titolo);

@@ -6,6 +6,7 @@
 #define UNIX_PATH_MAX 80
 #define N 100
 
+void aggiornaMax(fd_set set, int* max );
 int countAttributes(char* str);
 Book_t* recordToBook(char* riga, Book_t* book);
 void* worker(void* args);
