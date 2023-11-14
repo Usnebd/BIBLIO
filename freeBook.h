@@ -1,0 +1,1 @@
+void freeBook(Book_t* book);

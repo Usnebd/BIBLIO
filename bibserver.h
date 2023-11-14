@@ -1,6 +1,7 @@
 #include<time.h>
 #include"structures.h"
 #include"bookToRecord.h"
+#include"freeBook.h"
 #include"unboundedqueue.h"
 #define SIZE 400
 #define UNIX_PATH_MAX 80

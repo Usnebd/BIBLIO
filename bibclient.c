@@ -8,15 +8,13 @@
 #include <errno.h>
 #include"structures.h"
 #include"bookToRecord.h"
+#include"freeBook.h"
 #define SIZE 50
-
-void freeBook(Book_t* book);
 
 int main(int argc, char* argv[]){
     FILE* fconf=fopen("bib.conf","r");
     if(fconf){
         char type;
-        char* data;
         unsigned int length;
         size_t size=SIZE;
         char* sockname=(char*)malloc(SIZE);
@@ -42,13 +40,15 @@ int main(int argc, char* argv[]){
             int i;
             for(i=1;i<argc;i++){
                 if(strncmp(argv[i],"--autore=",9)==0){
-                    if(bookQuery->autore->val==NULL){
+                    if(bookQuery->autore==NULL){
                         bookQuery->autore=(NodoAutore*)malloc(sizeof(NodoAutore));
-                        bookQuery->autore->val=(char*)malloc(strlen(argv[i]+9));
-                        strcpy(bookQuery->autore->val,argv[i]+9);
-                        length=length+strlen("autore: ")+strlen(argv[i]+9)+2;
-                    }else{
-                        wrongInput=true;
+                        if(bookQuery->autore->val==NULL){
+                            bookQuery->autore->val=(char*)malloc(strlen(argv[i]+9));
+                            strcpy(bookQuery->autore->val,argv[i]+9);
+                            length=length+strlen("autore: ")+strlen(argv[i]+9)+2;
+                        }else{
+                            wrongInput=true;
+                        }
                     }
                 }else if(strncmp(argv[i], "--titolo=",9)==0){
                     if(bookQuery->titolo==NULL){
@@ -120,23 +120,27 @@ int main(int argc, char* argv[]){
                 close(serverSocket);
                 _exit(EXIT_FAILURE);
             }
-            data=(char*)malloc(length);
-            bookToRecord(bookQuery,data,'N');
+
+            char buffer[length];
+            strcpy(buffer,"");
+            bookToRecord(bookQuery,buffer,'N');
             freeBook(bookQuery);
-            // Scrive il tipo della struct
-            write(serverSocket, &type, sizeof(type));
-            // Scrive la lunghezza della struct
-            length=length+1;
-            write(serverSocket, &length, sizeof(length));
-            // Scrive i dati della struct
-            write(serverSocket, data, length);
-            free(data);
-            data=(char*)malloc(1);
+            // Copia il tipo della struct nel buffer
+            char* data=(char*)malloc(1+length+sizeof(unsigned int));
+            data[0] = type;
+            length++; //perché la stringa data conterrà anche il carattere di fine stringa /0
+            // Copia la lunghezza della struct nel buffer
+            memcpy(&data[1], &length, sizeof(unsigned int));
+            // Copia i dati della struct nel buffer
+            memcpy(&data[5], buffer, length);
+            write(serverSocket, data, 1+sizeof(unsigned int)+length);
+            //fa una write unica che contiente tutto
+            data=(char*)realloc(data,1);
             while((read(serverSocket,data,1))!=0){
                 switch (*data){
                     case MSG_NO:
                         read(serverSocket,&length,sizeof(unsigned int));
-                        printf("MSG_NO: data length=%d\n",length);
+                        printf("MSG_NO\n");
                         printf("Closed connection...\n");
                         free(data);
                         close(serverSocket);
@@ -145,10 +149,9 @@ int main(int argc, char* argv[]){
                         break;
                     case MSG_ERROR:
                         read(serverSocket,&length,sizeof(unsigned int));
-                        free(data);
-                        data=(char*)malloc(length);
+                        data=(char*)realloc(data,length);
                         read(serverSocket,data,length);
-                        printf("%s\n",data);
+                        printf("MSG_ERROR\n%s",data);
                         free(data);
                         printf("Closed connection...\n");
                         close(serverSocket);
@@ -157,10 +160,9 @@ int main(int argc, char* argv[]){
                         break;
                     case MSG_RECORD:
                         read(serverSocket,&length,sizeof(unsigned int));
-                        free(data);
-                        data=(char*)malloc(length);
+                        data=(char*)realloc(data,length);
                         read(serverSocket,data,length);
-                        printf("%s\n",data);
+                        printf("MSG_RECORD\n%s",data);
                         free(data);
                         break;
                     default:
@@ -182,40 +184,4 @@ int main(int argc, char* argv[]){
         _exit(EXIT_FAILURE);
     }
     _exit(EXIT_SUCCESS);
-}
-
-
-void freeBook(Book_t* book){
-    if(book->autore!=NULL){
-        NodoAutore* nodo=book->autore;
-        while(nodo!=NULL){
-            if(nodo->val!=NULL){
-                free(book->autore->val);
-            }
-            book->autore=book->autore->next;
-            free(nodo);
-        }
-        nodo=book->autore;
-        book->autore=book->autore->next;
-        free(nodo);
-    }
-    if(book->nota!=NULL){
-        free(book->nota);
-    }
-    if(book->collocazione!=NULL){
-        free(book->collocazione);
-    }
-    if(book->descrizione_fisica!=NULL){
-        free(book->descrizione_fisica);
-    }
-    if(book->editore!=NULL){
-        free(book->editore);
-    }
-    if(book->luogo_pubblicazione!=NULL){
-        free(book->luogo_pubblicazione);
-    }
-    if(book->titolo!=NULL){
-        free(book->titolo);
-    }
-    free(book);
 }

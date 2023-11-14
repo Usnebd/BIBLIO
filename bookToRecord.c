@@ -2,7 +2,6 @@
 #include"structures.h"
 
 void bookToRecord(Book_t* book, char* data,char msgType){
-    
     if(book->autore!=NULL){
         if(book->autore->val!=NULL){
             strcpy(data, "autore: ");
