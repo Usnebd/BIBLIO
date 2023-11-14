@@ -2,17 +2,17 @@
 
 void freeBook(Book_t* book){
     if(book->autore!=NULL){
-        NodoAutore* nodo=book->autore;
-        while(nodo!=NULL){
-            if(nodo->val!=NULL){
-                free(book->autore->val);
+        NodoAutore* currAuthor=book->autore;
+        while(currAuthor!=NULL){
+            if(currAuthor->val!=NULL){
+                free(currAuthor->val);
+                currAuthor=currAuthor->next;
+                if(book->autore->next!=NULL){
+                    free(book->autore->next);
+                }
             }
-            book->autore=book->autore->next;
-            free(nodo);
+            free(book->autore);
         }
-        nodo=book->autore;
-        book->autore=book->autore->next;
-        free(nodo);
     }
     if(book->nota!=NULL){
         free(book->nota);

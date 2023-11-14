@@ -1,1 +1,1 @@
-void bookToRecord(Book_t* book, char* data,char msgType);
+int bookToRecord(Book_t* book, char* data,char msgType);

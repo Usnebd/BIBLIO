@@ -1,14 +1,21 @@
 #include<string.h>
 #include"structures.h"
 
-void bookToRecord(Book_t* book, char* data,char msgType){
+int bookToRecord(Book_t* book, char* data, char msgType){
+    bool notFirstIteration=false;
     if(book->autore!=NULL){
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
         if(book->autore->val!=NULL){
             strcpy(data, "autore: ");
             strcat(data, book->autore->val);
             strcat(data, ";");
+            book->autore=book->autore->next;
             while(book->autore!=NULL){
-                strcat(data, " autore: ");
+                strcat(data, "autore: ");
                 strcat(data, book->autore->val);
                 strcat(data, ";");
                 book->autore=book->autore->next;
@@ -16,43 +23,84 @@ void bookToRecord(Book_t* book, char* data,char msgType){
         }
     }
     if((book->titolo)!=NULL){
-        strcat(data," titolo: ");
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"titolo: ");
         strcat(data,book->titolo);
         strcat(data, ";");
     }
     if((book->editore)!=NULL){
-        strcat(data," editore: ");
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"editore: ");
         strcat(data,book->editore);
         strcat(data, ";");
     }
     if((book->anno)!=0){
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
         strcat(data,"anno: ");
         data[strlen(data)]=book->anno;
         strcat(data,";");
     }
     if((book->nota)!=NULL){
-        strcat(data," nota: ");
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"nota: ");
         strcat(data,book->nota);
         strcat(data, ";");
     }
     if((book->collocazione)!=NULL){
-        strcat(data," collocazione: ");
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"collocazione: ");
         strcat(data,book->collocazione);
         strcat(data, ";");
     }
     if((book->luogo_pubblicazione)!=NULL){
-        strcat(data," luogo_pubblicazione: ");
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"luogo_pubblicazione: ");
         strcat(data,book->luogo_pubblicazione);
         strcat(data, ";");
     }
     if((book->descrizione_fisica)!=NULL){
-        strcat(data," descrizione_fisica: ");
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"descrizione_fisica: ");
         strcat(data,book->descrizione_fisica);
         strcat(data, ";");
     }
     if((book->prestito)!=NULL && (msgType=='Q')){
-        strcat(data," prestito: ");
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"prestito: ");
         strcat(data,book->prestito);
         strcat(data, ";");
     }
+    return strlen(data);
 }

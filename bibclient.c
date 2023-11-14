@@ -10,12 +10,12 @@
 #include"bookToRecord.h"
 #include"freeBook.h"
 #define SIZE 50
+#define BUFFSIZE 300 
 
 int main(int argc, char* argv[]){
     FILE* fconf=fopen("bib.conf","r");
     if(fconf){
         char type;
-        unsigned int length;
         size_t size=SIZE;
         char* sockname=(char*)malloc(SIZE);
         struct sockaddr_un sa;
@@ -33,7 +33,6 @@ int main(int argc, char* argv[]){
                     sleep(1);
                 }else {exit(EXIT_FAILURE);}
             }
-            length=0;
             Book_t* bookQuery=(Book_t*)malloc(sizeof(Book_t));
             bool wrongInput=false;
             type='Q';
@@ -45,7 +44,6 @@ int main(int argc, char* argv[]){
                         if(bookQuery->autore->val==NULL){
                             bookQuery->autore->val=(char*)malloc(strlen(argv[i]+9));
                             strcpy(bookQuery->autore->val,argv[i]+9);
-                            length=length+strlen("autore: ")+strlen(argv[i]+9)+2;
                         }else{
                             wrongInput=true;
                         }
@@ -54,7 +52,6 @@ int main(int argc, char* argv[]){
                     if(bookQuery->titolo==NULL){
                         bookQuery->titolo=(char*)malloc(strlen(argv[i]+9));
                         strcpy(bookQuery->titolo,argv[i]+9);
-                        length=length+strlen("titolo: ")+strlen(argv[i]+9)+2;
                     }else{
                         wrongInput=true;
                     }
@@ -62,7 +59,6 @@ int main(int argc, char* argv[]){
                     if(bookQuery->editore==NULL){
                         bookQuery->editore=(char*)malloc(strlen(argv[i]+10));
                         strcpy(bookQuery->editore,argv[i]+10);
-                        length=length+strlen("editore: ")+strlen(argv[i]+10)+2;
                     }else{
                         wrongInput=true;
                     }
@@ -70,7 +66,6 @@ int main(int argc, char* argv[]){
                     if(bookQuery->nota==NULL){
                         bookQuery->nota=(char*)malloc(strlen(argv[i]+7));
                         strcpy(bookQuery->nota,argv[i]+7);
-                        length=length+strlen("nota: ")+strlen(argv[i]+7)+2;
                     }else{
                         wrongInput=true;
                     }
@@ -78,7 +73,6 @@ int main(int argc, char* argv[]){
                     if(bookQuery->collocazione==NULL){
                         bookQuery->collocazione=(char*)malloc(strlen(argv[i]+15));
                         strcpy(bookQuery->collocazione,argv[i]+15);
-                        length=length+strlen("collocazione: ")+strlen(argv[i]+15)+2;
                     }else{
                         wrongInput=true;
                     }
@@ -86,14 +80,12 @@ int main(int argc, char* argv[]){
                     if(bookQuery->luogo_pubblicazione==NULL){
                         bookQuery->luogo_pubblicazione=(char*)malloc(strlen(argv[i]+22));
                         strcpy(bookQuery->luogo_pubblicazione,argv[i]+22);
-                        length=length+strlen("luogo_pubblicazione: ")+strlen(argv[i]+22)+2;
                     }else{
                         wrongInput=true;
                     }
                 }else if(strncmp(argv[i], "--anno=",7)==0){
                     if(bookQuery->anno!=0){
                         bookQuery->anno=atoi(argv[i]+7);
-                        length=length+strlen("anno: ")+strlen(argv[i]+7)+2;
                     }else{
                         wrongInput=true;
                     }
@@ -101,7 +93,6 @@ int main(int argc, char* argv[]){
                     if(bookQuery->descrizione_fisica==NULL){
                         bookQuery->descrizione_fisica=(char*)malloc(strlen(argv[i]+21));
                         strcpy(bookQuery->descrizione_fisica,argv[i]+21);
-                        length=length+strlen("descrizione_fisica: ")+strlen(argv[i]+21)+2;
                     }else{
                         wrongInput=true;
                     }
@@ -121,9 +112,9 @@ int main(int argc, char* argv[]){
                 _exit(EXIT_FAILURE);
             }
 
-            char buffer[length];
+            char buffer[BUFFSIZE];
             strcpy(buffer,"");
-            bookToRecord(bookQuery,buffer,'N');
+            unsigned int length=bookToRecord(bookQuery,buffer,'N');
             freeBook(bookQuery);
             // Copia il tipo della struct nel buffer
             char* data=(char*)malloc(1+length+sizeof(unsigned int));

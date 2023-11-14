@@ -1,4 +1,7 @@
 #include"bibserver.h"
+#define SIZE 400
+#define UNIX_PATH_MAX 80
+#define N 100
 
 int main(int argc, char* argv[]){
     if(argc!=4){
@@ -116,7 +119,7 @@ void* worker(void* args){
 	int* fd_num=(((arg_t*)args)->fd_num);
 	fd_set* clients=((arg_t*)args)->clients;
     Elem* head=((arg_t*)args)->list;
-    Elem node=*head;
+    Elem* node=head;
 	pthread_mutex_t* m=((arg_t*)args)->mutex;
 	while(1){
 		int *fd=(int*)pop(q);
@@ -135,20 +138,20 @@ void* worker(void* args){
         bool msgReturnType=false;
         switch(type){
             case MSG_QUERY:
-                while(node.val!=NULL){
-                    if(matchElemBook(book,node.val)==true){
+                while(node->val!=NULL){
+                    if(matchElemBook(book,node)==true){
                         buff=(char*)realloc(buff,SIZE);
-                        bookToRecord(node.val,buff,MSG_QUERY);
+                        bookToRecord(node->val,buff,MSG_QUERY);
                         msgReturnType=true;
                         write(*fd,"R",1);
                         unsigned int bufflength=strlen(buff);
                         write(*fd,&bufflength,sizeof(unsigned int)); 
                         write(*fd,buff,strlen(buff));
                     }
-                    if(node.next==NULL){
-                        node.val=NULL;
+                    if(node->next==NULL){
+                        node->val=NULL;
                     }else{
-                        node=*(node.next);
+                        node=node->next;
                     }
                 }
                 if(msgReturnType==false){
@@ -157,23 +160,23 @@ void* worker(void* args){
                 }
                 break;
             case MSG_LOAN:
-                while(node.val!=NULL){
-                    if(matchElemBook(book,node.val)==true){
-                        strcpy(node.val->prestito,"");
-                        node.val->prestito[strlen(node.val->prestito)]=data->tm_mday;
-                        strcat(node.val->prestito,"-");
-                        node.val->prestito[strlen(node.val->prestito)]=data->tm_mon;
-                        strcat(node.val->prestito,"-");
-                        node.val->prestito[strlen(node.val->prestito)]=data->tm_year;
+                while(node->val!=NULL){
+                    if(matchElemBook(book,node)==true){
+                        strcpy(node->val->prestito,"");
+                        node->val->prestito[strlen(node->val->prestito)]=data->tm_mday;
+                        strcat(node->val->prestito,"-");
+                        node->val->prestito[strlen(node->val->prestito)]=data->tm_mon;
+                        strcat(node->val->prestito,"-");
+                        node->val->prestito[strlen(node->val->prestito)]=data->tm_year;
                         buff=(char*)realloc(buff,SIZE);
-                        bookToRecord(node.val,buff,MSG_LOAN);
+                        bookToRecord(node->val,buff,MSG_LOAN);
                         msgReturnType=true;
                         write(*fd,"R",1);
                         unsigned int bufflength=strlen(buff);
                         write(*fd,&bufflength,sizeof(unsigned int)); 
                         write(*fd,buff,strlen(buff));
                     }
-                    node=*(node.next);
+                    node=node->next;
                 }
                 if(msgReturnType==false){
                     write(*fd,"N",1);
@@ -211,16 +214,18 @@ Book_t* recordToBook(char* riga, Book_t* book){
         value = (char*)malloc(100);
         char temp_field[strlen(field[i])];
         strcpy(temp_field,field[i]);
-        strcpy(unfiltered_key,strtok(temp_field,": "));
-        char* tok_value=strtok(NULL,": ");
-        strcpy(value,tok_value);
-        tok_value=strtok(NULL,": ");
+        strcpy(unfiltered_key,strtok(temp_field,":"));
+        char* tok_value=strtok(NULL,":");
+        strcat(value,tok_value);
+        tok_value=strtok(NULL,":");
         while((tok_value!=NULL)){
-            strcat(value,": ");
+            strcat(value,":");
             strcat(value,tok_value);
-            tok_value=strtok(NULL,": ");
+            tok_value=strtok(NULL,":");
         }
-        if(strcmp(unfiltered_key,"autore") == 0){
+        value=value+1;
+        char* filtered_key=strtok(unfiltered_key," ");
+        if(strcmp(filtered_key,"autore") == 0){
             book->autore=(NodoAutore*)malloc(sizeof(NodoAutore));
             book->autore->val=(char*)malloc(strlen(value));
             strcpy(book->autore->val,value);
@@ -232,48 +237,48 @@ Book_t* recordToBook(char* riga, Book_t* book){
                 head=book->autore;
             }
             n_autori++;
-        }else if(strcmp(unfiltered_key,"titolo") == 0){
+        }else if(strcmp(filtered_key,"titolo") == 0){
             book->titolo=(char*)malloc(strlen(value)+1);
             strcpy(book->titolo,value);
-        }else if(strcmp(unfiltered_key,"editore") == 0){
+        }else if(strcmp(filtered_key,"editore") == 0){
             book->editore=(char*)malloc(strlen(value)+1);
             strcpy(book->editore,value);
-        }else if(strcmp(unfiltered_key,"nota") == 0){
+        }else if(strcmp(filtered_key,"nota") == 0){
             book->nota=(char*)malloc(strlen(value)+1);
             strcpy(book->nota,value);
-        }else if(strcmp(unfiltered_key,"collocazione") == 0){
+        }else if(strcmp(filtered_key,"collocazione") == 0){
             book->collocazione=(char*)malloc(strlen(value)+1);
             strcpy(book->collocazione,value);
-        }else if(strcmp(unfiltered_key,"luogo_pubblicazione") == 0){
+        }else if(strcmp(filtered_key,"luogo_pubblicazione") == 0){
             book->luogo_pubblicazione=(char*)malloc(strlen(value)+1);
             strcpy(book->luogo_pubblicazione,value);
-        }else if(strcmp(unfiltered_key,"anno") == 0){
+        }else if(strcmp(filtered_key,"anno") == 0){
             book->anno=atoi(value);
-        }else if(strcmp(unfiltered_key,"prestito") == 0){
+        }else if(strcmp(filtered_key,"prestito") == 0){
             book->prestito=(char*)malloc(strlen(value)+1);
             strcpy(book->prestito,value);
-        }else if(strcmp(unfiltered_key,"descrizione_fisica") == 0){
+        }else if(strcmp(filtered_key,"descrizione_fisica") == 0){
             book->descrizione_fisica=(char*)malloc(strlen(value)+1);
             strcpy(book->descrizione_fisica,value);
         }
         free(unfiltered_key);
+        value=value-1;
         free(value);
     }
     return book;
 }
 
-bool matchElemBook(Book_t* book, Book_t* bookNode){
+bool matchElemBook(Book_t* book, Elem* NodeServer){
     bool match=true;
+    Book_t* bookNode = NodeServer->val;
     if(book->autore!=NULL){
-        if (bookNode->autore != NULL && bookNode->autore->val != NULL) {
-            while(bookNode->autore->val!=NULL){
-                if(strcmp(bookNode->autore->val,book->autore->val)!=0){
-                    match=false;
-                }else{
-                    match=true;
-                }
-                bookNode->autore=bookNode->autore->next;
+        while(bookNode->autore != NULL && bookNode->autore->val != NULL){
+            if(strcmp(bookNode->autore->val,book->autore->val)!=0){
+                match=false;
+            }else{
+                match=true;
             }
+            bookNode->autore=bookNode->autore->next;
         }
     }
     if(book->titolo!=NULL){
