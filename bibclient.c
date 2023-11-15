@@ -17,10 +17,10 @@ int main(int argc, char* argv[]){
     if(fconf){
         char type;
         size_t size=SIZE;
-        char* sockname=(char*)malloc(SIZE);
         struct sockaddr_un sa;
         sa.sun_family=AF_UNIX;
         bool emptyConf=true;
+        char* sockname=(char*)malloc(SIZE);
         while(!feof(fconf) && (getline(&sockname,&size,fconf)>1)){
             emptyConf=false;
             char path[1+strlen(sockname)];
@@ -127,49 +127,40 @@ int main(int argc, char* argv[]){
             write(serverSocket, data, 1+sizeof(unsigned int)+length);
             //fa una write unica che contiente tutto
             data=(char*)realloc(data,1);
-            while((read(serverSocket,data,1))!=0){
-                switch (*data){
-                    case MSG_NO:
-                        read(serverSocket,&length,sizeof(unsigned int));
-                        printf("MSG_NO\n");
-                        printf("Closed connection...\n");
-                        free(data);
-                        close(serverSocket);
-                        free(sockname);
-                        _exit(EXIT_FAILURE);
-                        break;
-                    case MSG_ERROR:
-                        read(serverSocket,&length,sizeof(unsigned int));
-                        data=(char*)realloc(data,length);
-                        read(serverSocket,data,length);
-                        printf("MSG_ERROR\n%s",data);
-                        free(data);
-                        printf("Closed connection...\n");
-                        close(serverSocket);
-                        free(sockname);
-                        _exit(EXIT_FAILURE);
-                        break;
-                    case MSG_RECORD:
-                        read(serverSocket,&length,sizeof(unsigned int));
-                        data=(char*)realloc(data,length);
-                        read(serverSocket,data,length);
-                        printf("MSG_RECORD\n%s",data);
-                        free(data);
-                        break;
-                    default:
-                        printf("Closed connection...\n");
-                        free(data);
-                        close(serverSocket);
-                        free(sockname);
-                        _exit(EXIT_FAILURE);
+            memset(data,0,1);
+            read(serverSocket,data,1);
+            switch (*data){
+                case MSG_NO:
+                    read(serverSocket,&length,sizeof(unsigned int));
+                    printf("\n%s: MSG_NO\n",sockname);
                     break;
-                }
+                case MSG_ERROR:
+                    read(serverSocket,&length,sizeof(unsigned int));
+                    data=(char*)realloc(data,length);
+                    memset(data,0,length);
+                    read(serverSocket,data,length);
+                    printf("\n%s: MSG_ERROR\n",sockname);
+                    printf("%s\n",data);
+                    break;
+                case MSG_RECORD:
+                    read(serverSocket,&length,sizeof(unsigned int));
+                    data=(char*)realloc(data,length);
+                    memset(data,0,length);
+                    read(serverSocket,data,length);
+                    printf("\n%s: MSG_RECORD\n",sockname);
+                    printf("%s\n",data);
+                    break;
+                default:
+                break;
             }
+            free(data);
+            close(serverSocket);
+            memset(sockname,0,strlen(sockname));
         }
+        free(sockname);
         if(emptyConf==true){
             printf("bib.conf è vuoto\n");
         }
-        free(sockname);
     }else{
         perror("Errore apertura file\n");
         _exit(EXIT_FAILURE);

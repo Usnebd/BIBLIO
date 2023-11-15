@@ -4,17 +4,14 @@
 int bookToRecord(Book_t* book, char* data, char msgType){
     bool notFirstIteration=false;
     if(book->autore!=NULL){
-        if(notFirstIteration==true){
-            strcat(data," ");
-        }else{
-            notFirstIteration=true;
-        }
         if(book->autore->val!=NULL){
             strcpy(data, "autore: ");
             strcat(data, book->autore->val);
             strcat(data, ";");
             book->autore=book->autore->next;
             while(book->autore!=NULL){
+                notFirstIteration=true;
+                strcat(data," ");
                 strcat(data, "autore: ");
                 strcat(data, book->autore->val);
                 strcat(data, ";");
@@ -48,9 +45,7 @@ int bookToRecord(Book_t* book, char* data, char msgType){
         }else{
             notFirstIteration=true;
         }
-        strcat(data,"anno: ");
-        data[strlen(data)]=book->anno;
-        strcat(data,";");
+        sprintf(data+strlen(data), "anno: %d;", book->anno);
     }
     if((book->nota)!=NULL){
         if(notFirstIteration==true){

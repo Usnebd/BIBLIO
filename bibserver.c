@@ -118,29 +118,26 @@ void* worker(void* args){
     Queue_t* q=((arg_t*)args)->q;
 	int* fd_num=(((arg_t*)args)->fd_num);
 	fd_set* clients=((arg_t*)args)->clients;
-    Elem* head=((arg_t*)args)->list;
-    Elem* node=head;
+    Elem* node=((arg_t*)args)->list;
 	pthread_mutex_t* m=((arg_t*)args)->mutex;
 	while(1){
 		int *fd=(int*)pop(q);
         unsigned int length;
         char type;
 		read(*fd,&type,1);
-        printf("readed: %c\n",type);
         read(*fd,&length,sizeof(unsigned int));
-        printf("readed: %d\n",length);
         char* buff=(char*)malloc(length);
         read(*fd,buff,length);
-        printf("readed: %s\n",buff);
         Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
         memset(book, 0, sizeof(Book_t));
         recordToBook(buff,book);
         bool msgReturnType=false;
         switch(type){
             case MSG_QUERY:
-                while(node->val!=NULL){
-                    if(matchElemBook(book,node)==true){
+                while(node!=NULL){
+                    if(matchElemBook(book,node->val)==true){
                         buff=(char*)realloc(buff,SIZE);
+                        memset(buff,0,SIZE);
                         bookToRecord(node->val,buff,MSG_QUERY);
                         msgReturnType=true;
                         write(*fd,"R",1);
@@ -148,20 +145,18 @@ void* worker(void* args){
                         write(*fd,&bufflength,sizeof(unsigned int)); 
                         write(*fd,buff,strlen(buff));
                     }
-                    if(node->next==NULL){
-                        node->val=NULL;
+                    if(node->next!=NULL){
+                        if(node->next->val!=NULL){
+                            node=node->next;
+                        }
                     }else{
-                        node=node->next;
+                        node=NULL;
                     }
-                }
-                if(msgReturnType==false){
-                    write(*fd,"N",1);
-                    write(*fd,0,sizeof(0));
                 }
                 break;
             case MSG_LOAN:
-                while(node->val!=NULL){
-                    if(matchElemBook(book,node)==true){
+                while(node!=NULL){
+                    if(matchElemBook(book,node->val)==true){
                         strcpy(node->val->prestito,"");
                         node->val->prestito[strlen(node->val->prestito)]=data->tm_mday;
                         strcat(node->val->prestito,"-");
@@ -169,22 +164,29 @@ void* worker(void* args){
                         strcat(node->val->prestito,"-");
                         node->val->prestito[strlen(node->val->prestito)]=data->tm_year;
                         buff=(char*)realloc(buff,SIZE);
+                        memset(buff,0,SIZE);
                         bookToRecord(node->val,buff,MSG_LOAN);
                         msgReturnType=true;
-                        write(*fd,"R",1);
+                        write(*fd,"L",1);
                         unsigned int bufflength=strlen(buff);
                         write(*fd,&bufflength,sizeof(unsigned int)); 
                         write(*fd,buff,strlen(buff));
                     }
-                    node=node->next;
-                }
-                if(msgReturnType==false){
-                    write(*fd,"N",1);
-                    write(*fd,0,sizeof(0));
+                    if(node->next!=NULL){
+                        if(node->next->val!=NULL){
+                            node=node->next;
+                        }
+                    }else{
+                        node=NULL;
+                    }
                 }
                 break;
             default:
                 break;
+        }
+        if(msgReturnType==false){
+            write(*fd,"N",1);
+            write(*fd,0,sizeof(0));
         }
 		close(*fd);
         freeBook(book);
@@ -208,10 +210,12 @@ Book_t* recordToBook(char* riga, Book_t* book){
     }
     int n_autori=0;
     NodoAutore* head;
+    NodoAutore* current;
     bool firstIteration=true;
     for(int i=0;i<n_attributes;i++){
         unfiltered_key = (char*)malloc(100);
         value = (char*)malloc(100);
+        strcpy(value,"");
         char temp_field[strlen(field[i])];
         strcpy(temp_field,field[i]);
         strcpy(unfiltered_key,strtok(temp_field,":"));
@@ -227,16 +231,20 @@ Book_t* recordToBook(char* riga, Book_t* book){
         char* filtered_key=strtok(unfiltered_key," ");
         if(strcmp(filtered_key,"autore") == 0){
             book->autore=(NodoAutore*)malloc(sizeof(NodoAutore));
+            memset(book->autore, 0, sizeof(NodoAutore));
             book->autore->val=(char*)malloc(strlen(value));
             strcpy(book->autore->val,value);
+
             if(firstIteration){
                 head=book->autore;
+                current=book->autore;
                 firstIteration=false;
             }else{
-                book->autore->next=head;
-                head=book->autore;
+                current->next=book->autore;
+                current=book->autore;
             }
             n_autori++;
+            book->autore=head;
         }else if(strcmp(filtered_key,"titolo") == 0){
             book->titolo=(char*)malloc(strlen(value)+1);
             strcpy(book->titolo,value);
@@ -268,52 +276,50 @@ Book_t* recordToBook(char* riga, Book_t* book){
     return book;
 }
 
-bool matchElemBook(Book_t* book, Elem* NodeServer){
-    bool match=true;
-    Book_t* bookNode = NodeServer->val;
+bool matchElemBook(Book_t* book, Book_t* bookNode){
+    bool match=false;
     if(book->autore!=NULL){
-        while(bookNode->autore != NULL && bookNode->autore->val != NULL){
-            if(strcmp(bookNode->autore->val,book->autore->val)!=0){
-                match=false;
-            }else{
+        NodoAutore* currAuthor=bookNode->autore;
+        while(currAuthor != NULL && currAuthor->val != NULL){
+            if(strcmp(currAuthor->val,book->autore->val)==0){
                 match=true;
             }
-            bookNode->autore=bookNode->autore->next;
+            currAuthor=currAuthor->next;
         }
     }
     if(book->titolo!=NULL){
-        if(strcmp(bookNode->titolo,book->titolo)!=0){
-            match=false;
+        if(strcmp(bookNode->titolo,book->titolo)==0){
+            match=true;
         }          
     }
     if(book->editore!=NULL){
-        if(strcmp(bookNode->editore,book->editore)!=0){
-            match=false;
+        if(strcmp(bookNode->editore,book->editore)==0){
+            match=true;
         }          
     }
     if(book->anno!=0){
-        if(book->anno!=bookNode->anno){
-            match=false;
+        if(book->anno==bookNode->anno){
+            match=true;
         }          
     }
     if(book->nota!=NULL){
-        if(strcmp(bookNode->nota,book->nota)!=0){
-            match=false;
+        if(strcmp(bookNode->nota,book->nota)==0){
+            match=true;
         }          
     }
     if(book->collocazione!=NULL){
-        if(strcmp(bookNode->collocazione,book->collocazione)!=0){
-            match=false;
+        if(strcmp(bookNode->collocazione,book->collocazione)==0){
+            match=true;
         }          
     }
     if(book->luogo_pubblicazione!=NULL){
-        if(strcmp(bookNode->luogo_pubblicazione,book->luogo_pubblicazione)!=0){
-            match=false;
+        if(strcmp(bookNode->luogo_pubblicazione,book->luogo_pubblicazione)==0){
+            match=true;
         }          
     }
     if(book->descrizione_fisica!=NULL){
-        if(strcmp(bookNode->descrizione_fisica,book->descrizione_fisica)!=0){
-            match=false;
+        if(strcmp(bookNode->descrizione_fisica,book->descrizione_fisica)==0){
+            match=true;
         }          
     }
     return match;
