@@ -1,7 +1,7 @@
 #include<string.h>
 #include"structures.h"
 
-int bookToRecord(Book_t* book, char* data, char msgType){
+int bookToRecord(Book_t* book, char* data){
     bool notFirstIteration=false;
     if(book->autore!=NULL){
         if(book->autore->val!=NULL){
@@ -87,7 +87,7 @@ int bookToRecord(Book_t* book, char* data, char msgType){
         strcat(data,book->descrizione_fisica);
         strcat(data, ";");
     }
-    if((book->prestito)!=NULL && (msgType=='Q')){
+    if(strcmp(book->prestito,"")!=0){
         if(notFirstIteration==true){
             strcat(data," ");
         }else{

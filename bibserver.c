@@ -112,9 +112,6 @@ int main(int argc, char* argv[]){
 }
 
 void* worker(void* args){
-    time_t timestamp = time(NULL);
-    struct tm* data = localtime(&timestamp);
-    //prendo la data
     Queue_t* q=((arg_t*)args)->q;
 	int* fd_num=(((arg_t*)args)->fd_num);
 	fd_set* clients=((arg_t*)args)->clients;
@@ -131,15 +128,16 @@ void* worker(void* args){
         Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
         memset(book, 0, sizeof(Book_t));
         recordToBook(buff,book);
-        bool msgReturnType=false;
+        bool noMatches=true;
         switch(type){
             case MSG_QUERY:
+                noMatches=true;
                 while(node!=NULL){
-                    if(matchElemBook(book,node->val)==true){
+                    if(matchElemBook(book,node->val)){
                         buff=(char*)realloc(buff,SIZE);
                         memset(buff,0,SIZE);
-                        bookToRecord(node->val,buff,MSG_QUERY);
-                        msgReturnType=true;
+                        bookToRecord(node->val,buff);
+                        noMatches=false;
                         write(*fd,"R",1);
                         unsigned int bufflength=strlen(buff);
                         write(*fd,&bufflength,sizeof(unsigned int)); 
@@ -155,22 +153,55 @@ void* worker(void* args){
                 }
                 break;
             case MSG_LOAN:
+                noMatches=true;
                 while(node!=NULL){
-                    if(matchElemBook(book,node->val)==true){
-                        strcpy(node->val->prestito,"");
-                        node->val->prestito[strlen(node->val->prestito)]=data->tm_mday;
-                        strcat(node->val->prestito,"-");
-                        node->val->prestito[strlen(node->val->prestito)]=data->tm_mon;
-                        strcat(node->val->prestito,"-");
-                        node->val->prestito[strlen(node->val->prestito)]=data->tm_year;
-                        buff=(char*)realloc(buff,SIZE);
-                        memset(buff,0,SIZE);
-                        bookToRecord(node->val,buff,MSG_LOAN);
-                        msgReturnType=true;
-                        write(*fd,"L",1);
-                        unsigned int bufflength=strlen(buff);
-                        write(*fd,&bufflength,sizeof(unsigned int)); 
-                        write(*fd,buff,strlen(buff));
+                    if(matchElemBook(book,node->val)){
+                        struct tm loanTime;
+                        bool available=false;
+                        if(strcmp(node->val->prestito,"")!=0){
+                            char date[strlen(node->val->prestito)];
+                            strcpy(date,node->val->prestito);
+                            char* tokDMY=strtok(date," ");  //DMY = Day Month Year
+                            char* tokSMH=strtok(NULL," ");      //SMH = Seconds Minutes Hours
+                            
+                            loanTime.tm_mday=atoi(strtok(tokDMY,"-"));
+                            loanTime.tm_mon=atoi(strtok(NULL,"-"));
+                            loanTime.tm_year=atoi(strtok(NULL,"-"))-1900;
+
+                            loanTime.tm_hour=atoi(strtok(tokSMH,":"));
+                            loanTime.tm_min=atoi(strtok(NULL,":"));
+                            loanTime.tm_sec=atoi(strtok(NULL,":"));
+                            
+                            time_t timestamp = time(NULL);
+                            struct tm* currentTime = localtime(&timestamp);
+                            if(difftime(mktime(currentTime),mktime(&loanTime))>0){  //data di scadenza (loanTime) è passata
+                                available=true;
+                            }
+                        }else{
+                            available=true;
+                        }
+                        if(available){
+                            noMatches=false;
+                            strcpy(node->val->prestito,"");
+                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_mday;
+                            strcat(node->val->prestito,"-");
+                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_mon;
+                            strcat(node->val->prestito,"-");
+                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_year;
+                            strcpy(node->val->prestito," ");
+                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_hour;
+                            strcat(node->val->prestito,":");
+                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_min;
+                            strcat(node->val->prestito,":");
+                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_sec;
+                            buff=(char*)realloc(buff,SIZE);
+                            memset(buff,0,SIZE);
+                            bookToRecord(node->val,buff);
+                            write(*fd,"L",1);
+                            unsigned int bufflength=strlen(buff);
+                            write(*fd,&bufflength,sizeof(unsigned int)); 
+                            write(*fd,buff,strlen(buff));
+                        }                        
                     }
                     if(node->next!=NULL){
                         if(node->next->val!=NULL){
@@ -184,7 +215,7 @@ void* worker(void* args){
             default:
                 break;
         }
-        if(msgReturnType==false){
+        if(noMatches){
             write(*fd,"N",1);
             write(*fd,0,sizeof(0));
         }
@@ -209,42 +240,34 @@ Book_t* recordToBook(char* riga, Book_t* book){
         strcpy(field[i],str);
     }
     int n_autori=0;
-    NodoAutore* head;
-    NodoAutore* current;
+    NodoAutore* previousAuthor;
     bool firstIteration=true;
-    for(int i=0;i<n_attributes;i++){
+    int i=0;
+    while(i<n_attributes){
         unfiltered_key = (char*)malloc(100);
         value = (char*)malloc(100);
         strcpy(value,"");
         char temp_field[strlen(field[i])];
         strcpy(temp_field,field[i]);
         strcpy(unfiltered_key,strtok(temp_field,":"));
+        char* filtered_key=unfiltered_key+strspn(unfiltered_key, " ");
         char* tok_value=strtok(NULL,":");
         strcat(value,tok_value);
-        tok_value=strtok(NULL,":");
-        while((tok_value!=NULL)){
-            strcat(value,":");
-            strcat(value,tok_value);
-            tok_value=strtok(NULL,":");
-        }
         value=value+1;
-        char* filtered_key=strtok(unfiltered_key," ");
         if(strcmp(filtered_key,"autore") == 0){
-            book->autore=(NodoAutore*)malloc(sizeof(NodoAutore));
-            memset(book->autore, 0, sizeof(NodoAutore));
-            book->autore->val=(char*)malloc(strlen(value));
-            strcpy(book->autore->val,value);
-
+            NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
+            memset(currentAuthor, 0, sizeof(NodoAutore));
+            currentAuthor->val=(char*)malloc(strlen(value));
+            strcpy(currentAuthor->val,value);
             if(firstIteration){
-                head=book->autore;
-                current=book->autore;
+                previousAuthor=currentAuthor;
+                book->autore=currentAuthor;
                 firstIteration=false;
             }else{
-                current->next=book->autore;
-                current=book->autore;
+                previousAuthor->next=currentAuthor;
+                previousAuthor=currentAuthor;
             }
             n_autori++;
-            book->autore=head;
         }else if(strcmp(filtered_key,"titolo") == 0){
             book->titolo=(char*)malloc(strlen(value)+1);
             strcpy(book->titolo,value);
@@ -263,7 +286,12 @@ Book_t* recordToBook(char* riga, Book_t* book){
         }else if(strcmp(filtered_key,"anno") == 0){
             book->anno=atoi(value);
         }else if(strcmp(filtered_key,"prestito") == 0){
-            book->prestito=(char*)malloc(strlen(value)+1);
+            tok_value=strtok(NULL,":");
+            strcat(value,":");
+            strcat(value,tok_value);
+            tok_value=strtok(NULL,":");
+            strcat(value,":");
+            strcat(value,tok_value);
             strcpy(book->prestito,value);
         }else if(strcmp(filtered_key,"descrizione_fisica") == 0){
             book->descrizione_fisica=(char*)malloc(strlen(value)+1);
@@ -272,6 +300,7 @@ Book_t* recordToBook(char* riga, Book_t* book){
         free(unfiltered_key);
         value=value-1;
         free(value);
+        i++;
     }
     return book;
 }

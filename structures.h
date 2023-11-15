@@ -22,7 +22,7 @@ struct
     char* collocazione;
     char* luogo_pubblicazione;
     char* descrizione_fisica;  
-    char* prestito;
+    char prestito[19];
     struct z* autore;
 }typedef Book_t;
 
