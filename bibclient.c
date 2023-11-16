@@ -113,11 +113,11 @@ int main(int argc, char* argv[]){
             }
 
             char buffer[BUFFSIZE];
-            strcpy(buffer,"");
+            memset(buffer,0,BUFFSIZE);
             unsigned int length=bookToRecord(bookQuery,buffer);
             freeBook(bookQuery);
             // Copia il tipo della struct nel buffer
-            char* data=(char*)malloc(1+length+sizeof(unsigned int));
+            char* data=(char*)malloc(BUFFSIZE);
             memcpy(&data[0], &type, 1);
             length++; //perché la stringa data conterrà anche il carattere di fine stringa /0
             // Copia la lunghezza della struct nel buffer
@@ -126,38 +126,44 @@ int main(int argc, char* argv[]){
             memcpy(&data[5], buffer, length);
             write(serverSocket, data, 1+sizeof(unsigned int)+length);
             //fa una write unica che contiente tutto
-            data=(char*)realloc(data,1);
-            memset(data,0,1);
+            memset(data,0,sizeof(data));
             while(read(serverSocket,data,1)){
                 switch (*data){
                     case MSG_NO:
+                        memset(&length,0,sizeof(length));
                         read(serverSocket,&length,sizeof(unsigned int));
                         printf("\n%s: MSG_NO\n",sockname);
                         break;
                     case MSG_ERROR:
+                        memset(&length,0,sizeof(length));
                         read(serverSocket,&length,sizeof(unsigned int));
-                        data=(char*)realloc(data,length);
+                        if(BUFFSIZE<length){
+                            data=(char*)realloc(data,length);
+                        }
                         memset(data,0,length);
                         read(serverSocket,data,length);
                         printf("\n%s: MSG_ERROR\n",sockname);
                         printf("%s\n",data);
                         break;
                     case MSG_RECORD:
+                        memset(&length,0,sizeof(length));
                         read(serverSocket,&length,sizeof(unsigned int));
-                        data=(char*)realloc(data,length);
+                        printf("data length: %d",length);
+                        if(BUFFSIZE<length){
+                            data=(char*)realloc(data,length);
+                        }
                         memset(data,0,length);
                         read(serverSocket,data,length);
                         printf("\n%s: MSG_RECORD\n",sockname);
                         printf("%s\n",data);
                         break;
                     default:
-
                     break;
                 }
             }
             free(data);
             close(serverSocket);
-            memset(sockname,0,strlen(sockname));
+            memset(sockname,0,sizeof(sockname));
         }
         if(emptyConf){
             perror("bib.conf è vuoto\n");

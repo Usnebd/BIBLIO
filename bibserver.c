@@ -1,5 +1,5 @@
 #include"bibserver.h"
-#define SIZE 400
+#define SIZE 1024
 #define UNIX_PATH_MAX 80
 #define N 100
 
@@ -120,10 +120,12 @@ void* worker(void* args){
 	while(1){
 		int *fd=(int*)pop(q);
         unsigned int length;
+        memset(&length,0,sizeof(length));
         char type;
 		read(*fd,&type,1);
         read(*fd,&length,sizeof(unsigned int));
         char* buff=(char*)malloc(length);
+        memset(buff,0,sizeof(buff));
         read(*fd,buff,length);
         Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
         memset(book, 0, sizeof(Book_t));
@@ -139,9 +141,9 @@ void* worker(void* args){
                         bookToRecord(node->val,buff);
                         noMatches=false;
                         write(*fd,"R",1);
-                        unsigned int bufflength=strlen(buff);
-                        write(*fd,&bufflength,sizeof(unsigned int)); 
-                        write(*fd,buff,strlen(buff));
+                        unsigned int dataLength=strlen(buff)+1;
+                        write(*fd,&dataLength,sizeof(unsigned int)); 
+                        write(*fd,buff,dataLength);
                     }
                     if(node->next!=NULL){
                         if(node->next->val!=NULL){
@@ -158,6 +160,8 @@ void* worker(void* args){
                     if(matchElemBook(book,node->val)){
                         struct tm loanTime;
                         bool available=false;
+                        time_t timestamp = time(NULL);
+                        struct tm* currentTime = localtime(&timestamp);
                         if(strcmp(node->val->prestito,"")!=0){
                             char date[strlen(node->val->prestito)];
                             strcpy(date,node->val->prestito);
@@ -165,15 +169,13 @@ void* worker(void* args){
                             char* tokSMH=strtok(NULL," ");      //SMH = Seconds Minutes Hours
                             
                             loanTime.tm_mday=atoi(strtok(tokDMY,"-"));
-                            loanTime.tm_mon=atoi(strtok(NULL,"-"));
+                            loanTime.tm_mon=atoi(strtok(NULL,"-")-1);
                             loanTime.tm_year=atoi(strtok(NULL,"-"))-1900;
 
                             loanTime.tm_hour=atoi(strtok(tokSMH,":"));
                             loanTime.tm_min=atoi(strtok(NULL,":"));
                             loanTime.tm_sec=atoi(strtok(NULL,":"));
                             
-                            time_t timestamp = time(NULL);
-                            struct tm* currentTime = localtime(&timestamp);
                             if(difftime(mktime(currentTime),mktime(&loanTime))>0){  //data di scadenza (loanTime) è passata
                                 available=true;
                             }
@@ -182,25 +184,43 @@ void* worker(void* args){
                         }
                         if(available){
                             noMatches=false;
-                            strcpy(node->val->prestito,"");
-                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_mday;
-                            strcat(node->val->prestito,"-");
-                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_mon;
-                            strcat(node->val->prestito,"-");
-                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_year;
-                            strcpy(node->val->prestito," ");
-                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_hour;
-                            strcat(node->val->prestito,":");
-                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_min;
-                            strcat(node->val->prestito,":");
-                            node->val->prestito[strlen(node->val->prestito)]=loanTime.tm_sec;
+                            memset(node->val->prestito, 0, sizeof(node->val->prestito));
+
+                            int offset = 0;  // Inizializza l'offset a 0
+
+                            if(currentTime->tm_mday<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mday);
+                            offset += sprintf(node->val->prestito + offset, "-");
+                            if(currentTime->tm_mon<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mon + 1);
+                            offset += sprintf(node->val->prestito + offset, "-");
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_year + 1900);
+                            offset += sprintf(node->val->prestito + offset, " ");
+                            if(currentTime->tm_hour<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_hour);
+                            offset += sprintf(node->val->prestito + offset, ":");
+                            if(currentTime->tm_min<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_min);
+                            offset += sprintf(node->val->prestito + offset, ":");
+                            if(currentTime->tm_sec<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_sec);
+
                             buff=(char*)realloc(buff,SIZE);
                             memset(buff,0,SIZE);
-                            bookToRecord(node->val,buff);
+                            unsigned int dataLength=bookToRecord(node->val,buff);
                             write(*fd,"L",1);
-                            unsigned int bufflength=strlen(buff);
-                            write(*fd,&bufflength,sizeof(unsigned int)); 
-                            write(*fd,buff,strlen(buff));
+                            write(*fd,&dataLength,sizeof(unsigned int)); 
+                            write(*fd,buff,dataLength);
                         }                        
                     }
                     if(node->next!=NULL){
@@ -227,8 +247,6 @@ void* worker(void* args){
 }
 
 Book_t* recordToBook(char* riga, Book_t* book){
-    char* unfiltered_key;
-    char* value;
     int n_attributes=countAttributes(riga);
     char* field[n_attributes];
     char* str=strtok(riga,";");
@@ -244,17 +262,13 @@ Book_t* recordToBook(char* riga, Book_t* book){
     bool firstIteration=true;
     int i=0;
     while(i<n_attributes){
-        unfiltered_key = (char*)malloc(100);
-        value = (char*)malloc(100);
-        strcpy(value,"");
-        char temp_field[strlen(field[i])];
-        strcpy(temp_field,field[i]);
-        strcpy(unfiltered_key,strtok(temp_field,":"));
-        char* filtered_key=unfiltered_key+strspn(unfiltered_key, " ");
-        char* tok_value=strtok(NULL,":");
-        strcat(value,tok_value);
-        value=value+1;
-        if(strcmp(filtered_key,"autore") == 0){
+        int key_length = strchr(field[i],':') - (field[i] + strspn(field[i], " "));
+        char key[key_length + 1];
+        strcpy(key,"");
+        strncpy(key, field[i]+strspn(field[i], " "), key_length);
+        key[key_length] = '\0';
+        char* value=strchr(field[i],':')+1+strspn(strchr(field[i],':')+1, " ");
+        if(strcmp(key,"autore") == 0){
             NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
             memset(currentAuthor, 0, sizeof(NodoAutore));
             currentAuthor->val=(char*)malloc(strlen(value));
@@ -268,38 +282,30 @@ Book_t* recordToBook(char* riga, Book_t* book){
                 previousAuthor=currentAuthor;
             }
             n_autori++;
-        }else if(strcmp(filtered_key,"titolo") == 0){
+        }else if(strcmp(key,"titolo") == 0){
             book->titolo=(char*)malloc(strlen(value)+1);
             strcpy(book->titolo,value);
-        }else if(strcmp(filtered_key,"editore") == 0){
+        }else if(strcmp(key,"editore") == 0){
             book->editore=(char*)malloc(strlen(value)+1);
             strcpy(book->editore,value);
-        }else if(strcmp(filtered_key,"nota") == 0){
+        }else if(strcmp(key,"nota") == 0){
             book->nota=(char*)malloc(strlen(value)+1);
             strcpy(book->nota,value);
-        }else if(strcmp(filtered_key,"collocazione") == 0){
+        }else if(strcmp(key,"collocazione") == 0){
             book->collocazione=(char*)malloc(strlen(value)+1);
             strcpy(book->collocazione,value);
-        }else if(strcmp(filtered_key,"luogo_pubblicazione") == 0){
+        }else if(strcmp(key,"luogo_pubblicazione") == 0){
             book->luogo_pubblicazione=(char*)malloc(strlen(value)+1);
             strcpy(book->luogo_pubblicazione,value);
-        }else if(strcmp(filtered_key,"anno") == 0){
+        }else if(strcmp(key,"anno") == 0){
             book->anno=atoi(value);
-        }else if(strcmp(filtered_key,"prestito") == 0){
-            tok_value=strtok(NULL,":");
-            strcat(value,":");
-            strcat(value,tok_value);
-            tok_value=strtok(NULL,":");
-            strcat(value,":");
-            strcat(value,tok_value);
+        }else if(strcmp(key,"prestito") == 0){
             strcpy(book->prestito,value);
-        }else if(strcmp(filtered_key,"descrizione_fisica") == 0){
+        }else if(strcmp(key,"descrizione_fisica") == 0){
             book->descrizione_fisica=(char*)malloc(strlen(value)+1);
             strcpy(book->descrizione_fisica,value);
         }
-        free(unfiltered_key);
-        value=value-1;
-        free(value);
+        free(field[i]);
         i++;
     }
     return book;
