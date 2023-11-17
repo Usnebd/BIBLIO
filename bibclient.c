@@ -10,7 +10,7 @@
 #include"bookToRecord.h"
 #include"freeBook.h"
 #define SIZE 50
-#define BUFFSIZE 300 
+#define BUFFSIZE 1024 
 
 int main(int argc, char* argv[]){
     FILE* fconf=fopen("bib.conf","r");
@@ -126,33 +126,26 @@ int main(int argc, char* argv[]){
             memcpy(&data[5], buffer, length);
             write(serverSocket, data, 1+sizeof(unsigned int)+length);
             //fa una write unica che contiente tutto
-            memset(data,0,sizeof(data));
+            memset(data,0,BUFFSIZE);
             while(read(serverSocket,data,1)){
                 switch (*data){
                     case MSG_NO:
-                        memset(&length,0,sizeof(length));
+                        memset(data,0,strlen(data));
                         read(serverSocket,&length,sizeof(unsigned int));
                         printf("\n%s: MSG_NO\n",sockname);
                         break;
                     case MSG_ERROR:
-                        memset(&length,0,sizeof(length));
+                        memset(data,0,strlen(data));
                         read(serverSocket,&length,sizeof(unsigned int));
-                        if(BUFFSIZE<length){
-                            data=(char*)realloc(data,length);
-                        }
-                        memset(data,0,length);
+                        data=(char*)realloc(data,length);
                         read(serverSocket,data,length);
                         printf("\n%s: MSG_ERROR\n",sockname);
                         printf("%s\n",data);
                         break;
                     case MSG_RECORD:
-                        memset(&length,0,sizeof(length));
+                        memset(data,0,strlen(data));
                         read(serverSocket,&length,sizeof(unsigned int));
-                        printf("data length: %d",length);
-                        if(BUFFSIZE<length){
-                            data=(char*)realloc(data,length);
-                        }
-                        memset(data,0,length);
+                        data=(char*)realloc(data,length);
                         read(serverSocket,data,length);
                         printf("\n%s: MSG_RECORD\n",sockname);
                         printf("%s\n",data);
@@ -163,7 +156,7 @@ int main(int argc, char* argv[]){
             }
             free(data);
             close(serverSocket);
-            memset(sockname,0,sizeof(sockname));
+            memset(sockname,0,SIZE);
         }
         if(emptyConf){
             perror("bib.conf è vuoto\n");

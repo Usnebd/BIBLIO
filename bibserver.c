@@ -125,7 +125,7 @@ void* worker(void* args){
 		read(*fd,&type,1);
         read(*fd,&length,sizeof(unsigned int));
         char* buff=(char*)malloc(length);
-        memset(buff,0,sizeof(buff));
+        memset(buff,0,length);
         read(*fd,buff,length);
         Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
         memset(book, 0, sizeof(Book_t));
@@ -141,7 +141,7 @@ void* worker(void* args){
                         bookToRecord(node->val,buff);
                         noMatches=false;
                         write(*fd,"R",1);
-                        unsigned int dataLength=strlen(buff)+1;
+                        unsigned int dataLength=strlen(buff);
                         write(*fd,&dataLength,sizeof(unsigned int)); 
                         write(*fd,buff,dataLength);
                     }
@@ -184,41 +184,10 @@ void* worker(void* args){
                         }
                         if(available){
                             noMatches=false;
-                            memset(node->val->prestito, 0, sizeof(node->val->prestito));
-
-                            int offset = 0;  // Inizializza l'offset a 0
-
-                            if(currentTime->tm_mday<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mday);
-                            offset += sprintf(node->val->prestito + offset, "-");
-                            if(currentTime->tm_mon<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mon + 1);
-                            offset += sprintf(node->val->prestito + offset, "-");
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_year + 1900);
-                            offset += sprintf(node->val->prestito + offset, " ");
-                            if(currentTime->tm_hour<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_hour);
-                            offset += sprintf(node->val->prestito + offset, ":");
-                            if(currentTime->tm_min<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_min);
-                            offset += sprintf(node->val->prestito + offset, ":");
-                            if(currentTime->tm_sec<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_sec);
-
                             buff=(char*)realloc(buff,SIZE);
                             memset(buff,0,SIZE);
                             unsigned int dataLength=bookToRecord(node->val,buff);
-                            write(*fd,"L",1);
+                            write(*fd,"R",1);
                             write(*fd,&dataLength,sizeof(unsigned int)); 
                             write(*fd,buff,dataLength);
                         }                        
