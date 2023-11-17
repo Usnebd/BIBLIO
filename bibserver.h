@@ -4,7 +4,7 @@
 #include"freeBook.h"
 #include"unboundedqueue.h"
 
-void aggiornaMax(fd_set set, int* max );
+int aggiornaMax(fd_set set, int max );
 int countAttributes(char* str);
 Book_t* recordToBook(char* riga, Book_t* book);
 void* worker(void* args);

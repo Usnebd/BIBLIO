@@ -8,6 +8,6 @@ autore: Knuth, Donald; titolo: Volume 3: Sorting and Searching. Second Edition; 
 
 autore: Di Cosmo, Roberto; autore: Nora, Dominique; titolo: Hijacking the World - The dark side of Microsoft; editore: 00h00; luogo_pubblicazione: Paris; nota: On line publishing; anno: 1998;  descrizione_fisica: 107p ; collocazione: WW.54;
 
-autore: Dick, Philip K.; titolo: Do Androids Dream of Electric Sheep?; anno: 1968; editore: Doubleday ; luogo_pubblicazione: New York;  descrizione_fisica: 210p ; collocazione: SF.54.br;
+autore: Dick, Philip K.; titolo: Do Androids Dream of Electric Sheep?; anno: 1968; editore: Doubleday ; luogo_pubblicazione: New York;  descrizione_fisica: 210p; collocazione: SF.54.br;
 
 autore: Aho, Alfred V.; autore: GioPinna; titolo: Come imparare C, Techniques, and Tools(2nd Edition); anno:2006; editore: Pearson; luogo_pubblicazione: Boston; descrizione_fisica: 1434 p., hardcov,  27 cm;

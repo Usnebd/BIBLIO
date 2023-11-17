@@ -27,6 +27,7 @@ int main(int argc, char* argv[]){
                 char temp_riga[strlen(riga)];
                 strcpy(temp_riga,riga);
                 Book_t* book=(Book_t*)malloc(sizeof(Book_t));
+                memset(book, 0, sizeof(Book_t));
                 recordToBook(riga,book);
                 Elem* elem=(Elem*)malloc(sizeof(Elem));
                 elem->val=book;
@@ -57,43 +58,32 @@ int main(int argc, char* argv[]){
         FD_SET(welcomeSocket,&set);
         int fd_num=0;
         if (welcomeSocket > fd_num) fd_num = welcomeSocket;
-        pthread_mutex_t m;
-        pthread_mutex_init(&m,NULL);
         Queue_t* q= initQueue();
         arg_t threadArgs;
         threadArgs.q=q;
-        threadArgs.mutex=&m;
-        threadArgs.fd_num=&fd_num;
         threadArgs.list=head;
-        threadArgs.clients=&set;
         for(int j=0;j<n_workers;j++){
             pthread_t tid;
             pthread_create(&tid,NULL,worker,&threadArgs);
             pthread_detach(tid);
         }
         while(1){
-            pthread_mutex_lock(&m);
             rdset=set;
-		    int currMax=fd_num;
-            pthread_mutex_unlock(&m);
-            select(currMax+1,&rdset,NULL,NULL,NULL);
-            for (int i=0;i<currMax+1;i++){
+            select(fd_num+1,&rdset,NULL,NULL,NULL);
+            for (int i=0;i<fd_num+1;i++){
                 if (FD_ISSET(i,&rdset)){
                     if (i==welcomeSocket){
                         int fd_c=accept(welcomeSocket, NULL,0);
                         printf("E' arrivato un cliente \n");
-                        pthread_mutex_lock(&m);
                         FD_SET(fd_c,&set);
                         if(fd_c>fd_num)
                             fd_num=fd_c;
-                        pthread_mutex_unlock(&m);
                     }else{
                         int* client=malloc(sizeof(int));
                         *client=i;
                         push(q,client);
-                        pthread_mutex_lock(&m);
                         FD_CLR(i,&set);
-                        pthread_mutex_unlock(&m);
+                        fd_num=aggiornaMax(set,fd_num);
                     }
                 }
             }
@@ -111,12 +101,14 @@ int main(int argc, char* argv[]){
     _exit(EXIT_SUCCESS);
 }
 
+int aggiornaMax(fd_set set, int max ){
+	while(!FD_ISSET(max,&set)) max--;
+    return max;
+}
+
 void* worker(void* args){
     Queue_t* q=((arg_t*)args)->q;
-	int* fd_num=(((arg_t*)args)->fd_num);
-	fd_set* clients=((arg_t*)args)->clients;
     Elem* node=((arg_t*)args)->list;
-	pthread_mutex_t* m=((arg_t*)args)->mutex;
 	while(1){
 		int *fd=(int*)pop(q);
         unsigned int length;
@@ -282,7 +274,7 @@ Book_t* recordToBook(char* riga, Book_t* book){
 
 bool matchElemBook(Book_t* book, Book_t* bookNode){
     bool match=false;
-    if(book->autore!=NULL){
+    if(book->autore!=NULL && bookNode->autore!=NULL){
         NodoAutore* currAuthor=bookNode->autore;
         while(currAuthor != NULL && currAuthor->val != NULL){
             if(strcmp(currAuthor->val,book->autore->val)==0){
@@ -291,37 +283,37 @@ bool matchElemBook(Book_t* book, Book_t* bookNode){
             currAuthor=currAuthor->next;
         }
     }
-    if(book->titolo!=NULL){
+    if(book->titolo!=NULL && bookNode->titolo!=NULL){
         if(strcmp(bookNode->titolo,book->titolo)==0){
             match=true;
         }          
     }
-    if(book->editore!=NULL){
+    if(book->editore!=NULL && bookNode->editore!=NULL){
         if(strcmp(bookNode->editore,book->editore)==0){
             match=true;
         }          
     }
-    if(book->anno!=0){
+    if(book->anno!=0 && bookNode->nota!=0){
         if(book->anno==bookNode->anno){
             match=true;
         }          
     }
-    if(book->nota!=NULL){
+    if(book->nota!=NULL && bookNode->nota!=NULL){
         if(strcmp(bookNode->nota,book->nota)==0){
             match=true;
         }          
     }
-    if(book->collocazione!=NULL){
+    if(book->collocazione!=NULL && bookNode->collocazione!=NULL){
         if(strcmp(bookNode->collocazione,book->collocazione)==0){
             match=true;
         }          
     }
-    if(book->luogo_pubblicazione!=NULL){
+    if(book->luogo_pubblicazione!=NULL && bookNode->luogo_pubblicazione!=NULL){
         if(strcmp(bookNode->luogo_pubblicazione,book->luogo_pubblicazione)==0){
             match=true;
         }          
     }
-    if(book->descrizione_fisica!=NULL){
+    if(book->descrizione_fisica!=NULL && bookNode->descrizione_fisica!=NULL){
         if(strcmp(bookNode->descrizione_fisica,book->descrizione_fisica)==0){
             match=true;
         }          
