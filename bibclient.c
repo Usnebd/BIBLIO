@@ -119,7 +119,6 @@ int main(int argc, char* argv[]){
             // Copia il tipo della struct nel buffer
             char* data=(char*)malloc(BUFFSIZE);
             memcpy(&data[0], &type, 1);
-            length++; //perché la stringa data conterrà anche il carattere di fine stringa /0
             // Copia la lunghezza della struct nel buffer
             memcpy(&data[1], &length, sizeof(unsigned int));
             // Copia i dati della struct nel buffer
