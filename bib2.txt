@@ -8,4 +8,4 @@ autore: Aho, Alfred V.; autore: Sethi, Ravi; autore: Ullman, Jeffrey D.; titolo:
 autore: Stevens, W. Richard; titolo: Unix Network Programming (Second Edition): Volume1 Networking APIs: Sockets and XTI; editore: Prentice Hall PTR; luogo_pubblicazione: Upper Saddle River, NY; anno: 1998; collocazione: QA76.6 ; nota: Aloha nui loa ; descrizione_fisica: 1017 p., ill, 23 cm;
 autore: Turing, Alan; titolo: Can digital computers think?; editore: The Turing Digital archive; luogo_pubblicazione: http://www.turingarchive.org; anno: 1951;  descrizione_fisica: paper 8 p. in envelope; nota: TS with AMS annotations of a talk broadcast on BBC Third Programme, 15 May 1951; collocazione: B/5;
 autore: Stroustrup, Brian; titolo: The Design and Evolution of C++; editore: Addison-Wesley; luogo_pubblicazione: Reading MA ; anno: 1994; descrizione_fisica: 461 pages;
-
+autore: Turing, Alan; titolo: Can digital computers think?; editore: The Turing Digital archive; luogo_pubblicazione: http://www.turingarchive.org; anno: 1951;  descrizione_fisica: paper 8 p. in envelope; nota: TS with AMS annotations of a talk broadcast on BBC Third Programme, 15 May 1951; collocazione: B/5;
