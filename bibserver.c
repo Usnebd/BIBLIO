@@ -14,7 +14,7 @@ int main(int argc, char* argv[]){
     size_t size=SIZE;
     char* riga=(char*)malloc(SIZE);
     //aggiorno il file bib.conf aggiungendo il socket del server attuale
-    checkFromConf(name_bib);
+    addBibToConf(name_bib);
     //fine aggiornamento
     int nchar_readed;
     FILE* fin = fopen(file_name,"r");
@@ -22,7 +22,7 @@ int main(int argc, char* argv[]){
     bool firstIteration=true;
     if(fin){
         while((nchar_readed=getline(&riga,&size,fin)) && !feof(fin)){
-            if(nchar_readed!=1)
+            if(nchar_readed>1)
             {   
                 char temp_riga[strlen(riga)];
                 strcpy(temp_riga,riga);
@@ -37,8 +37,6 @@ int main(int argc, char* argv[]){
                 }else if(isAlreadyPresent(book,head)==false){
                     elem->next=head;
                     head=elem;
-                }else{
-                    printf("record già presente\n");
                 }
             }
         }
@@ -433,26 +431,28 @@ bool matchElemBook(Book_t* book, Book_t* bookNode){
     return match;
 }
 
-bool checkAutore(Book_t* bookNode){
-    // Controlla il puntatore `bookNode->autore`.
-    return bookNode->autore != NULL;
-}
-
-void checkFromConf(char* name_bib){
-    FILE* fconf=fopen("bib.conf","a");
+void addBibToConf(char* name_bib){
+    FILE* fconf=fopen("bib.conf","r+");
     size_t size=N;
     char* riga=(char*)malloc(N);
     if(fconf==NULL){
         perror("errore apertura file bib.conf\n");
         _exit(EXIT_FAILURE);
     }else{
-        while(getline(&riga,&size,fconf)&& riga[0]!='\0'){
-            if(strcmp(riga,name_bib)==0){             
-                perror("nome biblioteca già preso\n");
-                _exit(EXIT_FAILURE);
+        int nchar=0;
+        while((nchar=getline(&riga,&size,fconf)) && !feof(fconf)){
+            if(nchar>1){
+                strtok(riga,",");
+                strtok(riga,":");
+                char* tok=strtok(NULL,":");
+                if(strcmp(tok,name_bib)==0){             
+                    perror("nome biblioteca già preso\n");
+                    _exit(EXIT_FAILURE);
+                }
+                memset(riga,0,N);
             }
         }
-        fprintf(fconf,"%s\n",name_bib);
+        fprintf(fconf,"\nBibName:%s,Sockpath:%s",name_bib,name_bib);
     }
     fclose(fconf);
     free(riga);

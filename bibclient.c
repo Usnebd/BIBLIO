@@ -9,7 +9,7 @@
 #include"structures.h"
 #include"bookToRecord.h"
 #include"freeBook.h"
-#define SIZE 50
+#define SIZE 100
 #define BUFFSIZE 1024 
 
 int main(int argc, char* argv[]){
@@ -21,11 +21,16 @@ int main(int argc, char* argv[]){
         sa.sun_family=AF_UNIX;
         bool emptyConf=true;
         char* sockname=(char*)malloc(SIZE);
-        while(!feof(fconf) && (getline(&sockname,&size,fconf)>1)){
+        char* riga=(char*)malloc(SIZE);
+        while(!feof(fconf) && (getline(&riga,&size,fconf)>1)){
             emptyConf=false;
-            char path[1+strlen(sockname)];
+            strtok(riga,",");
+            char *tokValue=strtok(NULL,",");
+            strtok(tokValue,":");
+            tokValue=strtok(NULL,":");
+            char path[1+strlen(tokValue)];
             strcpy(path,"./");
-            strcat(path,strtok(sockname,"\n"));
+            strcat(path,strtok(strtok(tokValue,"\n"),":"));
             strcpy(sa.sun_path,path);
             int serverSocket=socket(AF_UNIX,SOCK_STREAM,0);
             while(connect(serverSocket,(struct sockaddr*)&sa,sizeof(sa)) == -1){
