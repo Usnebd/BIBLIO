@@ -1,5 +1,7 @@
 #include<time.h>
 #include<stddef.h>
+#include<signal.h>
+#include <sys/file.h>
 #include"structures.h"
 #include"bookToRecord.h"
 #include"freeBook.h"
@@ -15,3 +17,4 @@ bool equalAuthors(Book_t* book, Book_t* bookNode);
 void addBibToConf(char* name_bib);
 int nullFieldsCount(Book_t* book);
 void deleteFromConf(char* name_bib);
+static void gestore (int signum);

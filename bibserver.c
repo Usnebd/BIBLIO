@@ -3,6 +3,8 @@
 #define UNIX_PATH_MAX 80
 #define N 100
 
+volatile int sigflag=0;
+
 int main(int argc, char* argv[]){
     if(argc!=4){
         printf("Not the right amount of args\n");
@@ -13,17 +15,21 @@ int main(int argc, char* argv[]){
     int n_workers = atoi(argv[3]);
     size_t size=SIZE;
     char* riga=(char*)malloc(SIZE);
-    //aggiorno il file bib.conf aggiungendo il socket del server attuale
     addBibToConf(name_bib);
-    //fine aggiornamento
-    int nchar_readed;
+    //registro gestore
+    struct sigaction s;
+    memset(&s,0,sizeof(s));
+    s.sa_handler=gestore;
+    //installo il gestore
+    sigaction(SIGINT,&s,NULL);
+    sigaction(SIGTERM,&s,NULL);
     FILE* fin = fopen(file_name,"r");
     Elem* head=NULL;
     bool firstIteration=true;
     if(fin){
-        while((nchar_readed=getline(&riga,&size,fin)) && !feof(fin)){
-            if(nchar_readed>1)
-            {   
+        int nchar=0;
+        while((nchar=getline(&riga,&size,fin))!=-1){
+            if(nchar!=0 && nchar!=1){
                 char temp_riga[strlen(riga)];
                 strcpy(temp_riga,riga);
                 Book_t* book=(Book_t*)malloc(sizeof(Book_t));
@@ -41,10 +47,14 @@ int main(int argc, char* argv[]){
             }
         }
         char path[strlen(name_bib)+1];
-        strcpy(path,"./");
-        strcat(path,name_bib);
-        FILE* flog=fopen(strcat(name_bib,".log"),"w");
-        //aggiungere if(flog)
+        char logName[strlen(name_bib)+strlen(".log")];
+        sprintf(path,"./%s",name_bib);
+        sprintf(logName,"%s.log",name_bib);
+        FILE* flog=fopen(logName,"w");
+        if(ferror(flog)){
+            perror("Errore durante la lettura del file di log\n");
+            _exit(EXIT_FAILURE);
+        }
         struct sockaddr_un sa_server;
         unlink(path);
         strncpy(sa_server.sun_path,path,UNIX_PATH_MAX);
@@ -52,53 +62,123 @@ int main(int argc, char* argv[]){
         int welcomeSocket=socket(AF_UNIX,SOCK_STREAM,0);
         bind(welcomeSocket,(struct sockaddr*)&sa_server,sizeof(sa_server));
         listen(welcomeSocket,SOMAXCONN);
-    
+
         fd_set set, rdset;
         FD_ZERO(&set);
         FD_SET(welcomeSocket,&set);
         int fd_num=0;
         if (welcomeSocket > fd_num) fd_num = welcomeSocket;
-        Queue_t* q= initQueue();
+        Queue_t* q=initQueue();
+        pthread_mutex_t m;
+        pthread_mutex_init(&m,NULL);
         arg_t threadArgs;
         threadArgs.q=q;
         threadArgs.list=head;
+        threadArgs.mutex=&m;
+        threadArgs.flog=flog;
         for(int j=0;j<n_workers;j++){
             pthread_t tid;
             pthread_create(&tid,NULL,worker,&threadArgs);
             pthread_detach(tid);
         }
         while(1){
+            if(sigflag==-1){
+                break;
+            }
             rdset=set;
-            select(fd_num+1,&rdset,NULL,NULL,NULL);
-            for (int i=0;i<fd_num+1;i++){
-                if (FD_ISSET(i,&rdset)){
-                    if (i==welcomeSocket){
-                        int fd_c=accept(welcomeSocket, NULL,0);
-                        printf("E' arrivato un cliente \n");
-                        FD_SET(fd_c,&set);
-                        if(fd_c>fd_num)
-                            fd_num=fd_c;
-                    }else{
-                        int* client=malloc(sizeof(int));
-                        *client=i;
-                        push(q,client);
-                        FD_CLR(i,&set);
-                        fd_num=aggiornaMax(set,fd_num);
+            if(select(fd_num+1,&rdset,NULL,NULL,NULL)!=-1){
+                for (int i=0;i<fd_num+1;i++){
+                    if (FD_ISSET(i,&rdset)){
+                        if (i==welcomeSocket){
+                            int fd_c=accept(welcomeSocket, NULL,0);
+                            printf("E' arrivato un cliente \n");
+                            FD_SET(fd_c,&set);
+                            if(fd_c>fd_num)
+                                fd_num=fd_c;
+                        }else{
+                            int* client=malloc(sizeof(int));
+                            *client=i;
+                            push(q,client);
+                            FD_CLR(i,&set);
+                            fd_num=aggiornaMax(set,fd_num);
+                        }
                     }
                 }
             }
 	    }
-        if(ferror(flog)){
-            perror("Errore durante la lettura del file di log\n");
+        deleteFromConf(name_bib);
+        int endWorkerSignal=1;
+        for(int i=0;i<n_workers;i++){
+            push(q,&endWorkerSignal);
         }
+        unlink(path);
         fclose(flog);
         fclose(fin);
     }
     else if(ferror(fin)){
         perror("Errore durante la lettura del file contentente i record\n");
     }  
-    deleteFromConf(name_bib); //cancello name_bib da bib.conf perché il server non è più operativo
     _exit(EXIT_SUCCESS);
+}
+
+void deleteFromConf(char* name_bib){
+    FILE* fconf=fopen("bib.conf","r+");
+    size_t size=N;
+    char* riga=(char*)malloc(N);
+    if(fconf==NULL){
+        perror("errore apertura file bib.conf\n");
+        _exit(EXIT_FAILURE);
+    }else{
+        int nchar=0;
+        long pos_inizio = 0;
+        long pos_fine = 0;
+        while((nchar=getline(&riga,&size,fconf))!=-1){
+            if(nchar != 1 && nchar != 0){
+                pos_inizio = pos_fine;
+                pos_fine = ftell(fconf);
+                if (strstr(riga, name_bib) != NULL) {
+                    
+                    fseek(fconf, pos_inizio, SEEK_SET);
+                    char tmp[strlen(riga)];
+                    char tmpName[strlen(name_bib)];
+                    memset(tmpName,'X',strlen(name_bib));
+                    tmpName[strlen(name_bib)]='\0';
+                    sprintf(tmp,"BibName:%s,Sockpath:%s\n",tmpName,tmpName);
+                    fwrite(tmp, 1, strlen(riga), fconf);
+                    fseek(fconf, 0, SEEK_END);
+                }
+                memset(riga,0,N);
+            }
+        }
+    }
+    fclose(fconf);
+    free(riga);
+}
+
+void addBibToConf(char* name_bib){
+    FILE* fconf=fopen("bib.conf","r+");
+    size_t size=N;
+    char* riga=(char*)malloc(N);
+    if(fconf==NULL){
+        perror("errore apertura file bib.conf\n");
+        _exit(EXIT_FAILURE);
+    }else{
+        while(!feof(fconf)){
+            if((getline(&riga,&size,fconf))>1){
+                strtok(riga,",");
+                strtok(riga,":");
+                char* tok=strtok(NULL,":");
+                if(strcmp(tok,name_bib)==0){             
+                    perror("nome biblioteca già preso\n");
+                    _exit(EXIT_FAILURE);
+                }
+                memset(riga,0,N);
+            }
+        }
+        fprintf(fconf,"BibName:%s,Sockpath:%s\n",name_bib,name_bib);
+    }
+    fclose(fconf);
+    free(riga);
 }
 
 int aggiornaMax(fd_set set, int max ){
@@ -219,8 +299,12 @@ bool isAlreadyPresent(Book_t* book, Elem* head){
 void* worker(void* args){
     Queue_t* q=((arg_t*)args)->q;
     Elem* node=((arg_t*)args)->list;
-	while(1){
-		int *fd=(int*)pop(q);
+    pthread_mutex_t* m=((arg_t*)args)->mutex;
+    FILE* flog=((arg_t*)args)->flog;
+    int *fd=(int*)malloc(sizeof(int));
+    *fd=0;
+	while(*fd!=-1){
+        fd=(int*)pop(q);
         unsigned int length;
         memset(&length,0,sizeof(length));
         char type;
@@ -233,6 +317,7 @@ void* worker(void* args){
         memset(book, 0, sizeof(Book_t));
         recordToBook(buff,book);
         bool noMatches=true;
+        int queryCount=0;
         switch(type){
             case MSG_QUERY:
                 noMatches=true;
@@ -246,6 +331,11 @@ void* worker(void* args){
                         unsigned int dataLength=strlen(buff);
                         write(*fd,&dataLength,sizeof(unsigned int)); 
                         write(*fd,buff,dataLength);
+                        strcat(buff,"\n");
+                        pthread_mutex_lock(m);
+                        fwrite(buff,1,strlen(buff),flog);
+                        pthread_mutex_unlock(m);
+                        queryCount++;
                     }
                     if(node->next!=NULL){
                         if(node->next->val!=NULL){
@@ -256,6 +346,7 @@ void* worker(void* args){
                     }
                 }
                 break;
+
             case MSG_LOAN:
                 noMatches=true;
                 while(node!=NULL){
@@ -283,15 +374,52 @@ void* worker(void* args){
                             }
                         }else{
                             available=true;
+                            
                         }
                         if(available){
                             noMatches=false;
+                            memset(node->val->prestito, 0, sizeof(node->val->prestito));
+
+                            int offset = 0;  // Inizializza l'offset a 0
+
+                            if(currentTime->tm_mday<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mday);
+                            offset += sprintf(node->val->prestito + offset, "-");
+                            if(currentTime->tm_mon<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mon + 1);
+                            offset += sprintf(node->val->prestito + offset, "-");
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_year + 1900);
+                            offset += sprintf(node->val->prestito + offset, " ");
+                            if(currentTime->tm_hour<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_hour);
+                            offset += sprintf(node->val->prestito + offset, ":");
+                            if(currentTime->tm_min<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_min);
+                            offset += sprintf(node->val->prestito + offset, ":");
+                            if(currentTime->tm_sec<10){
+                                offset += sprintf(node->val->prestito + offset, "%d", 0);
+                            }
+                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_sec);
+
                             buff=(char*)realloc(buff,SIZE);
                             memset(buff,0,SIZE);
                             unsigned int dataLength=bookToRecord(node->val,buff);
                             write(*fd,"R",1);
                             write(*fd,&dataLength,sizeof(unsigned int)); 
                             write(*fd,buff,dataLength);
+                            strcat(buff,"\n");
+                            pthread_mutex_lock(m);
+                            fwrite(buff,1,strlen(buff),flog);
+                            pthread_mutex_unlock(m);
+                            queryCount++;
                         }                        
                     }
                     if(node->next!=NULL){
@@ -310,10 +438,20 @@ void* worker(void* args){
             write(*fd,"N",1);
             write(*fd,0,sizeof(0));
         }
+        char str[20];
+        if(type=='L'){
+            sprintf(str, "LOAN %u\n",queryCount);
+        }else{
+            sprintf(str, "QUERY %u\n",queryCount);
+        }
+        pthread_mutex_lock(m);
+        fwrite(str,1,strlen(str),flog);
+        pthread_mutex_unlock(m);
 		close(*fd);
         freeBook(book);
         free(buff);
 	}
+    free(fd);
 	return NULL;
 }
 
@@ -331,14 +469,19 @@ Book_t* recordToBook(char* riga, Book_t* book){
     int n_autori=0;
     NodoAutore* previousAuthor;
     bool firstIteration=true;
-    int i=0;
-    while(i<n_attributes){
-        int key_length = strchr(field[i],':') - (field[i] + strspn(field[i], " "));
-        char key[key_length + 1];
-        strcpy(key,"");
+    for(int i=0;i<n_attributes;i++){
+        int key_length = strchr(field[i],':') - field[i] - strspn(field[i], " ");
+        char key[key_length+1];
+        key[key_length]='\0';
         strncpy(key, field[i]+strspn(field[i], " "), key_length);
-        key[key_length] = '\0';
-        char* value=strchr(field[i],':')+1+strspn(strchr(field[i],':')+1, " ");
+        char* subfield=strchr(field[i],':')+1+strspn(strchr(field[i],':')+1, " ");
+        int value_length=strlen(subfield);
+        while(subfield[value_length-1]==' '){
+            value_length--;
+        }
+        char value[value_length+1];
+        value[value_length]='\0';
+        strncpy(value,subfield,value_length);
         if(strcmp(key,"autore") == 0){
             NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
             memset(currentAuthor, 0, sizeof(NodoAutore));
@@ -354,30 +497,29 @@ Book_t* recordToBook(char* riga, Book_t* book){
             }
             n_autori++;
         }else if(strcmp(key,"titolo") == 0){
-            book->titolo=(char*)malloc(strlen(value)+1);
+            book->titolo=(char*)malloc(strlen(value));
             strcpy(book->titolo,value);
         }else if(strcmp(key,"editore") == 0){
-            book->editore=(char*)malloc(strlen(value)+1);
+            book->editore=(char*)malloc(strlen(value));
             strcpy(book->editore,value);
         }else if(strcmp(key,"nota") == 0){
-            book->nota=(char*)malloc(strlen(value)+1);
+            book->nota=(char*)malloc(strlen(value));
             strcpy(book->nota,value);
         }else if(strcmp(key,"collocazione") == 0){
-            book->collocazione=(char*)malloc(strlen(value)+1);
+            book->collocazione=(char*)malloc(strlen(value));
             strcpy(book->collocazione,value);
         }else if(strcmp(key,"luogo_pubblicazione") == 0){
-            book->luogo_pubblicazione=(char*)malloc(strlen(value)+1);
+            book->luogo_pubblicazione=(char*)malloc(strlen(value));
             strcpy(book->luogo_pubblicazione,value);
         }else if(strcmp(key,"anno") == 0){
             book->anno=atoi(value);
         }else if(strcmp(key,"prestito") == 0){
             strcpy(book->prestito,value);
         }else if(strcmp(key,"descrizione_fisica") == 0){
-            book->descrizione_fisica=(char*)malloc(strlen(value)+1);
+            book->descrizione_fisica=(char*)malloc(strlen(value));
             strcpy(book->descrizione_fisica,value);
         }
         free(field[i]);
-        i++;
     }
     return book;
 }
@@ -431,56 +573,6 @@ bool matchElemBook(Book_t* book, Book_t* bookNode){
     return match;
 }
 
-void addBibToConf(char* name_bib){
-    FILE* fconf=fopen("bib.conf","r+");
-    size_t size=N;
-    char* riga=(char*)malloc(N);
-    if(fconf==NULL){
-        perror("errore apertura file bib.conf\n");
-        _exit(EXIT_FAILURE);
-    }else{
-        int nchar=0;
-        while((nchar=getline(&riga,&size,fconf)) && !feof(fconf)){
-            if(nchar>1){
-                strtok(riga,",");
-                strtok(riga,":");
-                char* tok=strtok(NULL,":");
-                if(strcmp(tok,name_bib)==0){             
-                    perror("nome biblioteca già preso\n");
-                    _exit(EXIT_FAILURE);
-                }
-                memset(riga,0,N);
-            }
-        }
-        fprintf(fconf,"\nBibName:%s,Sockpath:%s",name_bib,name_bib);
-    }
-    fclose(fconf);
-    free(riga);
-}
-
-
-void deleteFromConf(char* name_bib){
-    FILE* fconf=fopen("bib.conf","a");
-    char* buffer=(char*)malloc(N);
-    if(fconf==NULL){
-        perror("errore apertura file bib.conf\n");
-        _exit(EXIT_FAILURE);
-    }else{
-        int pos = strstr(buffer, name_bib) - buffer;
-        // Se la parola è stata trovata
-        if (pos != -1) {
-            // Rimuovi la parola dalla stringa
-            buffer[pos] = '\0';
-
-            // Scrivi il nuovo contenuto del file
-            fseek(fconf, 0, SEEK_SET);
-            fputs(buffer, fconf);
-        }
-    }
-    fclose(fconf);
-    free(buffer);
-}
-
 int countAttributes(char* riga){
     int count=0;
     for(int i=0;i<strlen(riga);i++){
@@ -489,4 +581,17 @@ int countAttributes(char* riga){
         }
     }
     return count;
+}
+
+static void gestore (int signum) {
+    sigflag=-1;
+    if(signum==2){
+        printf("\nRICEVUTO SEGNALE SIGINT\n");
+        printf("Terminazione server\n");
+    }else if(signum==15){
+        printf("\nRICEVUTO SEGNALE SIGTERM\n");
+        printf("Terminazione server\n");
+    }else{
+        printf("\nRICEVUTO SEGNALE %d\n",signum);
+    }
 }

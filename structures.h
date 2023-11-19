@@ -43,5 +43,7 @@ typedef struct z NodoAutore;
 typedef struct {
 	Queue_t* q;
     Elem* list;
+    pthread_mutex_t* mutex;
+    FILE* flog;
 }
 arg_t;
