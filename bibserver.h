@@ -17,4 +17,5 @@ bool equalAuthors(Book_t* book, Book_t* bookNode);
 void addBibToConf(char* name_bib);
 int nullFieldsCount(Book_t* book);
 void deleteFromConf(char* name_bib);
+void dumpRecord(char* filename, Elem* head);
 static void gestore (int signum);

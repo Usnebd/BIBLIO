@@ -106,7 +106,6 @@ int main(int argc, char* argv[]){
                 }
             }
 	    }
-        deleteFromConf(name_bib);
         int endWorkerSignal=1;
         for(int i=0;i<n_workers;i++){
             push(q,&endWorkerSignal);
@@ -114,11 +113,74 @@ int main(int argc, char* argv[]){
         unlink(path);
         fclose(flog);
         fclose(fin);
+        deleteFromConf(name_bib);
+        dumpRecord(file_name,head);
     }
     else if(ferror(fin)){
         perror("Errore durante la lettura del file contentente i record\n");
     }  
     _exit(EXIT_SUCCESS);
+}
+
+void dumpRecord(char* filename, Elem* head){
+    FILE* fin=fopen(filename,"w");
+    if(fin){
+        ftruncate(fileno(fin), 0);
+        char* record=(char*)malloc(SIZE);
+        int offset;
+        NodoAutore* nodeAuthor;
+        Book_t* book;
+        while(head!=NULL){
+            bool firstIteration=true;
+            offset=0;
+            book=head->val;
+            nodeAuthor=book->autore;
+            while(nodeAuthor!=NULL){
+                if(nodeAuthor->val!=NULL){
+                    if(firstIteration){
+                        firstIteration=false;
+                        offset +=sprintf(record,"autore: %s;",nodeAuthor->val);
+                    }else{
+                        offset +=sprintf(record+offset," autore: %s;",nodeAuthor->val);
+                    }
+                }
+                nodeAuthor=nodeAuthor->next;
+            }
+            if(book->titolo!=NULL){
+                offset +=sprintf(record+offset," titolo: %s;",book->titolo);
+            }
+            if(book->editore!=NULL){
+                offset +=sprintf(record+offset," editore: %s;",book->editore);
+            }
+            if(book->anno!=0){
+                offset +=sprintf(record+offset," anno: %d;",book->anno);
+            }
+            if(book->nota!=NULL){
+                offset +=sprintf(record+offset," nota: %s;",book->nota);
+            }
+            if(book->collocazione!=NULL){
+                offset +=sprintf(record+offset," collocazione: %s;",book->collocazione);
+            }
+            if(book->descrizione_fisica!=NULL){
+                offset +=sprintf(record+offset," descrizione_fisica: %s;",book->descrizione_fisica);
+            }
+            if(book->luogo_pubblicazione!=NULL){
+                offset +=sprintf(record+offset," luogo_pubblicazione: %s;",book->luogo_pubblicazione);
+            }
+            if(book->prestito!=NULL){
+                offset +=sprintf(record+offset," prestito: %s;",book->prestito);
+            }
+            strcat(record,"\n");
+            offset++;
+            fwrite(record+strspn(record," "),1,offset,fin);
+            head=head->next;
+        }
+        free(record);
+        fclose(fin);
+    }else if(ferror(fin)){
+        perror("Errore durante la lettura del file contentente i record\n");
+        _exit(EXIT_FAILURE);
+    }  
 }
 
 void deleteFromConf(char* name_bib){

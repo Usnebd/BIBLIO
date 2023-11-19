@@ -1,15 +1,2 @@
-autore: Waiss, Pierre; autore: Leroy, Xavier; titolo: Le langage CAML; editore: InterEditions; anno: 1993; nota: Edizione Francese; collocazione: KK.Hl32; luogo_pubblicazione: Paris; descrizione_fisica: 406p., softcov,  13 cm;
-
-autore: Waiss, Pierre; autore: Leroy, Xavier; titolo: troppo bello c; editore: InterEditions; anno: 1993; nota: Edizione Francese; collocazione: KK.Hl32; luogo_pubblicazione: Paris; descrizione_fisica: 406p., softcov,  13 cm;
-
-autore: Tanenbaum, Andrew S.; titolo: Computer Networks(Third Edition); editore: Prentice Hall PTR; anno: 1996; collocazione: CN.45; luogo_pubblicazione: Upper Saddle River, NY; descrizione_fisica: 813 p., softcov,  13 cm;
-
-autore: Bentley, Jon; titolo: Programming Pearls (2nd Edition); editore: Addison-Wesley; luogo_pubblicazione: Reading MA ; anno: 1999; collocazione: Q446 58; descrizione_fisica: 239 + xi pp.;
-
-autore: Knuth, Donald; titolo: Volume 3: Sorting and Searching. Second Edition; editore: Addison-Wesley; luogo_pubblicazione: Reading MA ; anno: 1998; descrizione_fisica: xiv+780pp.+foldout; collocazione: ff.567;
-
-autore: Di Cosmo, Roberto; autore: Nora, Dominique; titolo: Hijacking the World - The dark side of Microsoft; editore: 00h00; luogo_pubblicazione: Paris; nota: On line publishing; anno: 1998;  descrizione_fisica: 107p ; collocazione: WW.54;
-
-autore: Dick, Philip K.; titolo: Do Androids Dream of Electric Sheep?; anno: 1968; editore: Doubleday ; luogo_pubblicazione: New York;  descrizione_fisica: 210p; collocazione: SF.54.br;
-
-autore: Aho, Alfred V.; autore: GioPinna; titolo: Come imparare C, Techniques, and Tools(2nd Edition); anno:2006; editore: Pearson; luogo_pubblicazione: Boston; descrizione_fisica: 1434 p., hardcov,  27 cm;
+autore: Pierre; titolo: Le langage CAML!; editore: InterEditions; anno: 1993; nota: Edizione Francese!; collocazione: KK.Hl32; descrizione_fisica: 406p., softcov,  13 cm; luogo_pubblicazione: Paris; prestito: 19-11-2023 23:30:42;
+autore: Tanenbaum, Andrew S.; titolo: Computer Networks(Third Edition); editore: Prentice Hall PTR; anno: 1996; collocazione: CN.45; descrizione_fisica: 813 p., softcov,  13 cm; luogo_pubblicazione: Upper Saddle River, NY; prestito: 10-10-2020 10:10:20;

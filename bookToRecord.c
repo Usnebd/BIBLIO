@@ -3,19 +3,20 @@
 
 int bookToRecord(Book_t* book, char* data){
     bool notFirstIteration=false;
-    if(book->autore!=NULL){
-        if(book->autore->val!=NULL){
+    NodoAutore* nodeAuthor=book->autore;
+    if(nodeAuthor!=NULL){
+        if(nodeAuthor->val!=NULL){
             strcpy(data, "autore: ");
-            strcat(data, book->autore->val);
+            strcat(data, nodeAuthor->val);
             strcat(data, ";");
-            book->autore=book->autore->next;
-            while(book->autore!=NULL){
+            nodeAuthor=nodeAuthor->next;
+            while(nodeAuthor!=NULL){
                 notFirstIteration=true;
                 strcat(data," ");
                 strcat(data, "autore: ");
-                strcat(data, book->autore->val);
+                strcat(data, nodeAuthor->val);
                 strcat(data, ";");
-                book->autore=book->autore->next;
+                nodeAuthor=nodeAuthor->next;
             }
         }
     }
