@@ -532,56 +532,62 @@ Book_t* recordToBook(char* riga, Book_t* book){
     NodoAutore* previousAuthor;
     bool firstIteration=true;
     for(int i=0;i<n_attributes;i++){
-        int key_length = strchr(field[i],':') - field[i] - strspn(field[i], " ");
-        char key[key_length+1];
-        key[key_length]='\0';
-        strncpy(key, field[i]+strspn(field[i], " "), key_length);
         char* subfield=strchr(field[i],':')+1+strspn(strchr(field[i],':')+1, " ");
-        int value_length=strlen(subfield);
-        while(subfield[value_length-1]==' '){
-            value_length--;
-        }
-        char value[value_length+1];
-        value[value_length]='\0';
-        strncpy(value,subfield,value_length);
-        if(strcmp(key,"autore") == 0){
-            NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
-            memset(currentAuthor, 0, sizeof(NodoAutore));
-            currentAuthor->val=(char*)malloc(strlen(value));
-            strcpy(currentAuthor->val,value);
-            if(firstIteration){
-                previousAuthor=currentAuthor;
-                book->autore=currentAuthor;
-                firstIteration=false;
-            }else{
-                previousAuthor->next=currentAuthor;
-                previousAuthor=currentAuthor;
+        if(strcmp(subfield,"")!=0){ //sporco key perché tanto il campo è vuoto
+            int key_length = strchr(field[i],':') - field[i] - strspn(field[i], " ");
+            char key[key_length+1];
+            strncpy(key, field[i]+strspn(field[i], " "), key_length); 
+            while(key[key_length-1]==' '){
+                key_length--;
+            } 
+            strncpy(key, field[i]+strspn(field[i], " "), key_length);  
+            key[key_length]='\0';   
+            int value_length=strlen(subfield);
+            while(subfield[value_length-1]==' '){
+                value_length--;
             }
-            n_autori++;
-        }else if(strcmp(key,"titolo") == 0){
-            book->titolo=(char*)malloc(strlen(value));
-            strcpy(book->titolo,value);
-        }else if(strcmp(key,"editore") == 0){
-            book->editore=(char*)malloc(strlen(value));
-            strcpy(book->editore,value);
-        }else if(strcmp(key,"nota") == 0){
-            book->nota=(char*)malloc(strlen(value));
-            strcpy(book->nota,value);
-        }else if(strcmp(key,"collocazione") == 0){
-            book->collocazione=(char*)malloc(strlen(value));
-            strcpy(book->collocazione,value);
-        }else if(strcmp(key,"luogo_pubblicazione") == 0){
-            book->luogo_pubblicazione=(char*)malloc(strlen(value));
-            strcpy(book->luogo_pubblicazione,value);
-        }else if(strcmp(key,"anno") == 0){
-            book->anno=atoi(value);
-        }else if(strcmp(key,"prestito") == 0){
-            strcpy(book->prestito,value);
-        }else if(strcmp(key,"descrizione_fisica") == 0){
-            book->descrizione_fisica=(char*)malloc(strlen(value));
-            strcpy(book->descrizione_fisica,value);
+            char value[value_length+1];
+            value[value_length]='\0';
+            strncpy(value,subfield,value_length);
+            if(strcmp(key,"autore") == 0){
+                NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
+                memset(currentAuthor, 0, sizeof(NodoAutore));
+                currentAuthor->val=(char*)malloc(strlen(value));
+                strcpy(currentAuthor->val,value);
+                if(firstIteration){
+                    previousAuthor=currentAuthor;
+                    book->autore=currentAuthor;
+                    firstIteration=false;
+                }else{
+                    previousAuthor->next=currentAuthor;
+                    previousAuthor=currentAuthor;
+                }
+                n_autori++;
+            }else if(strcmp(key,"titolo") == 0){
+                book->titolo=(char*)malloc(strlen(value));
+                strcpy(book->titolo,value);
+            }else if(strcmp(key,"editore") == 0){
+                book->editore=(char*)malloc(strlen(value));
+                strcpy(book->editore,value);
+            }else if(strcmp(key,"nota") == 0){
+                book->nota=(char*)malloc(strlen(value));
+                strcpy(book->nota,value);
+            }else if(strcmp(key,"collocazione") == 0){
+                book->collocazione=(char*)malloc(strlen(value));
+                strcpy(book->collocazione,value);
+            }else if(strcmp(key,"luogo_pubblicazione") == 0){
+                book->luogo_pubblicazione=(char*)malloc(strlen(value));
+                strcpy(book->luogo_pubblicazione,value);
+            }else if(strcmp(key,"anno") == 0){
+                book->anno=atoi(value);
+            }else if(strcmp(key,"prestito") == 0){
+                strcpy(book->prestito,value);
+            }else if(strcmp(key,"descrizione_fisica") == 0){
+                book->descrizione_fisica=(char*)malloc(strlen(value));
+                strcpy(book->descrizione_fisica,value);
+            }
+            free(field[i]);   
         }
-        free(field[i]);
     }
     return book;
 }
