@@ -14,7 +14,6 @@ int main(int argc, char* argv[]){
     char* file_name = argv[2];
     int n_workers = atoi(argv[3]);
     size_t size=SIZE;
-    char* riga=(char*)malloc(SIZE);
     addBibToConf(name_bib);
     //registro gestore
     struct sigaction s;
@@ -24,14 +23,13 @@ int main(int argc, char* argv[]){
     sigaction(SIGINT,&s,NULL);
     sigaction(SIGTERM,&s,NULL);
     FILE* fin = fopen(file_name,"r");
-    Elem* head=NULL;
-    bool firstIteration=true;
     if(fin){
+        Elem* head=NULL;
+        bool firstIteration=true;
         int nchar=0;
+        char* riga=(char*)malloc(SIZE);
         while((nchar=getline(&riga,&size,fin))!=-1){
             if(nchar!=0 && nchar!=1){
-                char temp_riga[strlen(riga)];
-                strcpy(temp_riga,riga);
                 Book_t* book=(Book_t*)malloc(sizeof(Book_t));
                 memset(book, 0, sizeof(Book_t));
                 recordToBook(riga,book);
@@ -43,9 +41,13 @@ int main(int argc, char* argv[]){
                 }else if(isAlreadyPresent(book,head)==false){
                     elem->next=head;
                     head=elem;
+                }else{
+                    freeBook(book);
+                    free(elem);
                 }
             }
         }
+        free(riga);
         char path[strlen(name_bib)+1];
         char logName[strlen(name_bib)+strlen(".log")];
         sprintf(path,"./%s",name_bib);
@@ -76,10 +78,12 @@ int main(int argc, char* argv[]){
         threadArgs.list=head;
         threadArgs.mutex=&m;
         threadArgs.flog=flog;
+        pthread_t threadArray[n_workers];
         for(int j=0;j<n_workers;j++){
             pthread_t tid;
+            threadArray[j]=tid;
             pthread_create(&tid,NULL,worker,&threadArgs);
-            pthread_detach(tid);
+
         }
         while(1){
             if(sigflag==-1){
@@ -106,9 +110,13 @@ int main(int argc, char* argv[]){
                 }
             }
 	    }
-        int endWorkerSignal=1;
         for(int i=0;i<n_workers;i++){
-            push(q,&endWorkerSignal);
+            int* endWorkerSignal=(int*)malloc(sizeof(int));
+            *endWorkerSignal=-1;
+            push(q,endWorkerSignal);
+        }
+        for(int i=0;i<n_workers;++i) {
+            pthread_join(threadArray[i], NULL);
         }
         unlink(path);
         fclose(flog);
@@ -173,7 +181,10 @@ void dumpRecord(char* filename, Elem* head){
             strcat(record,"\n");
             offset++;
             fwrite(record+strspn(record," "),1,offset,fin);
+            Elem* tmp=head;
             head=head->next;
+            freeBook(tmp->val);
+            free(tmp);
         }
         free(record);
         fclose(fin);
@@ -299,10 +310,9 @@ int nullFieldsCount(Book_t* book){
 
 bool isAlreadyPresent(Book_t* book, Elem* head){
     Elem* currElem=head;
-    Book_t* bookNode=currElem->val;
     while(currElem!=NULL){
         bool fieldEqual=true; 
-        bookNode=currElem->val;   
+        Book_t* bookNode=currElem->val;   
         if(nullFieldsCount(book)!=nullFieldsCount(bookNode)){
             fieldEqual=false;
         }else{
@@ -363,157 +373,160 @@ void* worker(void* args){
     Elem* node=((arg_t*)args)->list;
     pthread_mutex_t* m=((arg_t*)args)->mutex;
     FILE* flog=((arg_t*)args)->flog;
-    int *fd=(int*)malloc(sizeof(int));
-    *fd=0;
-	while(*fd!=-1){
-        fd=(int*)pop(q);
-        unsigned int length;
-        memset(&length,0,sizeof(length));
-        char type;
-		read(*fd,&type,1);
-        read(*fd,&length,sizeof(unsigned int));
-        char* buff=(char*)malloc(length);
-        memset(buff,0,length);
-        read(*fd,buff,length);
-        Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
-        memset(book, 0, sizeof(Book_t));
-        recordToBook(buff,book);
-        bool noMatches=true;
-        int queryCount=0;
-        switch(type){
-            case MSG_QUERY:
-                noMatches=true;
-                while(node!=NULL){
-                    if(matchElemBook(book,node->val)){
-                        buff=(char*)realloc(buff,SIZE);
-                        memset(buff,0,SIZE);
-                        bookToRecord(node->val,buff);
-                        noMatches=false;
-                        write(*fd,"R",1);
-                        unsigned int dataLength=strlen(buff);
-                        write(*fd,&dataLength,sizeof(unsigned int)); 
-                        write(*fd,buff,dataLength);
-                        strcat(buff,"\n");
-                        pthread_mutex_lock(m);
-                        fwrite(buff,1,strlen(buff),flog);
-                        pthread_mutex_unlock(m);
-                        queryCount++;
-                    }
-                    if(node->next!=NULL){
-                        if(node->next->val!=NULL){
-                            node=node->next;
-                        }
-                    }else{
-                        node=NULL;
-                    }
-                }
-                break;
-
-            case MSG_LOAN:
-                noMatches=true;
-                while(node!=NULL){
-                    if(matchElemBook(book,node->val)){
-                        struct tm loanTime;
-                        bool available=false;
-                        time_t timestamp = time(NULL);
-                        struct tm* currentTime = localtime(&timestamp);
-                        if(strcmp(node->val->prestito,"")!=0){
-                            char date[strlen(node->val->prestito)];
-                            strcpy(date,node->val->prestito);
-                            char* tokDMY=strtok(date," ");  //DMY = Day Month Year
-                            char* tokSMH=strtok(NULL," ");      //SMH = Seconds Minutes Hours
-                            
-                            loanTime.tm_mday=atoi(strtok(tokDMY,"-"));
-                            loanTime.tm_mon=atoi(strtok(NULL,"-")-1);
-                            loanTime.tm_year=atoi(strtok(NULL,"-"))-1900;
-
-                            loanTime.tm_hour=atoi(strtok(tokSMH,":"));
-                            loanTime.tm_min=atoi(strtok(NULL,":"));
-                            loanTime.tm_sec=atoi(strtok(NULL,":"));
-                            
-                            if(difftime(mktime(currentTime),mktime(&loanTime))>0){  //data di scadenza (loanTime) è passata
-                                available=true;
-                            }
-                        }else{
-                            available=true;
-                            
-                        }
-                        if(available){
-                            noMatches=false;
-                            memset(node->val->prestito, 0, sizeof(node->val->prestito));
-
-                            int offset = 0;  // Inizializza l'offset a 0
-
-                            if(currentTime->tm_mday<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mday);
-                            offset += sprintf(node->val->prestito + offset, "-");
-                            if(currentTime->tm_mon<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mon + 1);
-                            offset += sprintf(node->val->prestito + offset, "-");
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_year + 1900);
-                            offset += sprintf(node->val->prestito + offset, " ");
-                            if(currentTime->tm_hour<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_hour);
-                            offset += sprintf(node->val->prestito + offset, ":");
-                            if(currentTime->tm_min<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_min);
-                            offset += sprintf(node->val->prestito + offset, ":");
-                            if(currentTime->tm_sec<10){
-                                offset += sprintf(node->val->prestito + offset, "%d", 0);
-                            }
-                            offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_sec);
-
+    int fd=0;
+	while(sigflag!=-1){
+        int* ftemp=(int*)pop(q);
+        fd=*ftemp;
+        free(ftemp);
+        if(fd!=-1){
+            unsigned int length;
+            memset(&length,0,sizeof(length));
+            char type;
+            read(fd,&type,1);
+            read(fd,&length,sizeof(unsigned int));
+            char* buff = (char*)malloc(length + 1);
+            memset(buff, 0, length + 1);  // Inizializza la memoria allocata a zero
+            read(fd,buff,length);
+            Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
+            memset(book, 0, sizeof(Book_t));
+            recordToBook(buff,book);
+            bool noMatches=true;
+            int queryCount=0;
+            switch(type){
+                case MSG_QUERY:
+                    noMatches=true;
+                    while(node!=NULL){
+                        if(matchElemBook(book,node->val)){
                             buff=(char*)realloc(buff,SIZE);
                             memset(buff,0,SIZE);
-                            unsigned int dataLength=bookToRecord(node->val,buff);
-                            write(*fd,"R",1);
-                            write(*fd,&dataLength,sizeof(unsigned int)); 
-                            write(*fd,buff,dataLength);
+                            bookToRecord(node->val,buff);
+                            noMatches=false;
+                            write(fd,"R",1);
+                            unsigned int dataLength=strlen(buff);
+                            write(fd,&dataLength,sizeof(unsigned int)); 
+                            write(fd,buff,dataLength);
                             strcat(buff,"\n");
                             pthread_mutex_lock(m);
                             fwrite(buff,1,strlen(buff),flog);
                             pthread_mutex_unlock(m);
                             queryCount++;
-                        }                        
-                    }
-                    if(node->next!=NULL){
-                        if(node->next->val!=NULL){
-                            node=node->next;
                         }
-                    }else{
-                        node=NULL;
+                        if(node->next!=NULL){
+                            if(node->next->val!=NULL){
+                                node=node->next;
+                            }
+                        }else{
+                            node=NULL;
+                        }
                     }
-                }
-                break;
-            default:
-                break;
+                    break;
+
+                case MSG_LOAN:
+                    noMatches=true;
+                    while(node!=NULL){
+                        if(matchElemBook(book,node->val)){
+                            struct tm loanTime;
+                            bool available=false;
+                            time_t timestamp = time(NULL);
+                            struct tm* currentTime = localtime(&timestamp);
+                            if(strcmp(node->val->prestito,"")!=0){
+                                char date[strlen(node->val->prestito)];
+                                strcpy(date,node->val->prestito);
+                                char* tokDMY=strtok(date," ");  //DMY = Day Month Year
+                                char* tokSMH=strtok(NULL," ");      //SMH = Seconds Minutes Hours
+                                
+                                loanTime.tm_mday=atoi(strtok(tokDMY,"-"));
+                                loanTime.tm_mon=atoi(strtok(NULL,"-")-1);
+                                loanTime.tm_year=atoi(strtok(NULL,"-"))-1900;
+
+                                loanTime.tm_hour=atoi(strtok(tokSMH,":"));
+                                loanTime.tm_min=atoi(strtok(NULL,":"));
+                                loanTime.tm_sec=atoi(strtok(NULL,":"));
+                                
+                                if(difftime(mktime(currentTime),mktime(&loanTime))>0){  //data di scadenza (loanTime) è passata
+                                    available=true;
+                                }
+                            }else{
+                                available=true;
+                                
+                            }
+                            if(available){
+                                noMatches=false;
+                                memset(node->val->prestito, 0, sizeof(node->val->prestito));
+
+                                int offset = 0;  // Inizializza l'offset a 0
+
+                                if(currentTime->tm_mday<10){
+                                    offset += sprintf(node->val->prestito + offset, "%d", 0);
+                                }
+                                offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mday);
+                                offset += sprintf(node->val->prestito + offset, "-");
+                                if(currentTime->tm_mon<10){
+                                    offset += sprintf(node->val->prestito + offset, "%d", 0);
+                                }
+                                offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mon + 1);
+                                offset += sprintf(node->val->prestito + offset, "-");
+                                offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_year + 1900);
+                                offset += sprintf(node->val->prestito + offset, " ");
+                                if(currentTime->tm_hour<10){
+                                    offset += sprintf(node->val->prestito + offset, "%d", 0);
+                                }
+                                offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_hour);
+                                offset += sprintf(node->val->prestito + offset, ":");
+                                if(currentTime->tm_min<10){
+                                    offset += sprintf(node->val->prestito + offset, "%d", 0);
+                                }
+                                offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_min);
+                                offset += sprintf(node->val->prestito + offset, ":");
+                                if(currentTime->tm_sec<10){
+                                    offset += sprintf(node->val->prestito + offset, "%d", 0);
+                                }
+                                offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_sec);
+
+                                buff=(char*)realloc(buff,SIZE);
+                                memset(buff,0,SIZE);
+                                unsigned int dataLength=bookToRecord(node->val,buff);
+                                write(fd,"R",1);
+                                write(fd,&dataLength,sizeof(unsigned int)); 
+                                write(fd,buff,dataLength);
+                                strcat(buff,"\n");
+                                pthread_mutex_lock(m);
+                                fwrite(buff,1,strlen(buff),flog);
+                                pthread_mutex_unlock(m);
+                                queryCount++;
+                            }                        
+                        }
+                        if(node->next!=NULL){
+                            if(node->next->val!=NULL){
+                                node=node->next;
+                            }
+                        }else{
+                            node=NULL;
+                        }
+                    }
+                    break;
+                default:
+                    break;
+            }
+            if(noMatches){
+                write(fd,"N",1);
+                write(fd,0,sizeof(0));
+            }
+            char str[20];
+            if(type=='L'){
+                sprintf(str, "LOAN %u\n",queryCount);
+            }else{
+                sprintf(str, "QUERY %u\n",queryCount);
+            }
+            pthread_mutex_lock(m);
+            fwrite(str,1,strlen(str),flog);
+            pthread_mutex_unlock(m);
+            close(fd);
+            freeBook(book);
+            free(buff);
         }
-        if(noMatches){
-            write(*fd,"N",1);
-            write(*fd,0,sizeof(0));
-        }
-        char str[20];
-        if(type=='L'){
-            sprintf(str, "LOAN %u\n",queryCount);
-        }else{
-            sprintf(str, "QUERY %u\n",queryCount);
-        }
-        pthread_mutex_lock(m);
-        fwrite(str,1,strlen(str),flog);
-        pthread_mutex_unlock(m);
-		close(*fd);
-        freeBook(book);
-        free(buff);
 	}
-    free(fd);
+    printf("Thread ID: %ld è terminato\n",pthread_self());
 	return NULL;
 }
 
@@ -521,11 +534,11 @@ Book_t* recordToBook(char* riga, Book_t* book){
     int n_attributes=countAttributes(riga);
     char* field[n_attributes];
     char* str=strtok(riga,";");
-    field[0]=(char*)malloc(strlen(str));
+    field[0]=(char*)malloc(strlen(str)+1);
     strcpy(field[0],str);
     for(int i=1;i<n_attributes;i++){
         str = strtok(NULL,";");
-        field[i]=(char*)malloc(strlen(str));
+        field[i]=(char*)malloc(strlen(str)+1);
         strcpy(field[i],str);
     }
     int n_autori=0;
@@ -535,8 +548,9 @@ Book_t* recordToBook(char* riga, Book_t* book){
         char* subfield=strchr(field[i],':')+1+strspn(strchr(field[i],':')+1, " ");
         if(strcmp(subfield,"")!=0){ //sporco key perché tanto il campo è vuoto
             int key_length = strchr(field[i],':') - field[i] - strspn(field[i], " ");
-            char key[key_length+1];
-            strncpy(key, field[i]+strspn(field[i], " "), key_length); 
+            char key[key_length + 1];
+            strncpy(key, field[i] + strspn(field[i], " "), key_length);
+            key[key_length] = '\0'; 
             while(key[key_length-1]==' '){
                 key_length--;
             } 
@@ -552,7 +566,7 @@ Book_t* recordToBook(char* riga, Book_t* book){
             if(strcmp(key,"autore") == 0){
                 NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
                 memset(currentAuthor, 0, sizeof(NodoAutore));
-                currentAuthor->val=(char*)malloc(strlen(value));
+                currentAuthor->val=(char*)malloc(strlen(value)+1);
                 strcpy(currentAuthor->val,value);
                 if(firstIteration){
                     previousAuthor=currentAuthor;
@@ -564,30 +578,32 @@ Book_t* recordToBook(char* riga, Book_t* book){
                 }
                 n_autori++;
             }else if(strcmp(key,"titolo") == 0){
-                book->titolo=(char*)malloc(strlen(value));
+                book->titolo=(char*)malloc(strlen(value)+1);
                 strcpy(book->titolo,value);
             }else if(strcmp(key,"editore") == 0){
-                book->editore=(char*)malloc(strlen(value));
+                book->editore=(char*)malloc(strlen(value)+1);
                 strcpy(book->editore,value);
             }else if(strcmp(key,"nota") == 0){
-                book->nota=(char*)malloc(strlen(value));
+                book->nota=(char*)malloc(strlen(value)+1);
                 strcpy(book->nota,value);
             }else if(strcmp(key,"collocazione") == 0){
-                book->collocazione=(char*)malloc(strlen(value));
+                book->collocazione=(char*)malloc(strlen(value)+1);
                 strcpy(book->collocazione,value);
             }else if(strcmp(key,"luogo_pubblicazione") == 0){
-                book->luogo_pubblicazione=(char*)malloc(strlen(value));
+                book->luogo_pubblicazione=(char*)malloc(strlen(value)+1);
                 strcpy(book->luogo_pubblicazione,value);
             }else if(strcmp(key,"anno") == 0){
                 book->anno=atoi(value);
             }else if(strcmp(key,"prestito") == 0){
                 strcpy(book->prestito,value);
             }else if(strcmp(key,"descrizione_fisica") == 0){
-                book->descrizione_fisica=(char*)malloc(strlen(value));
+                book->descrizione_fisica=(char*)malloc(strlen(value)+1);
                 strcpy(book->descrizione_fisica,value);
-            }
-            free(field[i]);   
+            }  
         }
+    }
+    for (int i = 0; i < n_attributes; i++) {
+        free(field[i]);
     }
     return book;
 }

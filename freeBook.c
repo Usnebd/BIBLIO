@@ -6,12 +6,10 @@ void freeBook(Book_t* book){
         while(currAuthor!=NULL){
             if(currAuthor->val!=NULL){
                 free(currAuthor->val);
+                NodoAutore* tmp=currAuthor;
                 currAuthor=currAuthor->next;
-                if(book->autore->next!=NULL){
-                    free(book->autore->next);
-                }
+                free(tmp);
             }
-            free(book->autore);
         }
     }
     if(book->nota!=NULL){

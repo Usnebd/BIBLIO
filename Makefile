@@ -23,4 +23,4 @@ unboundedqueue.o: unboundedqueue.c unboundedqueue.h
 	gcc -c unboundedqueue.c -o unboundedqueue.o
 
 clean:
-	rm -f *.o bibserver bibclient
+	rm -f *.o bibserver bibcient
