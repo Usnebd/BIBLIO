@@ -81,16 +81,15 @@ int main(int argc, char* argv[]){
         pthread_t threadArray[n_workers];
         for(int j=0;j<n_workers;j++){
             pthread_t tid;
-            threadArray[j]=tid;
             pthread_create(&tid,NULL,worker,&threadArgs);
-
+            threadArray[j]=tid;
         }
-        while(1){
-            if(sigflag==-1){
-                break;
-            }
+        sigset_t sigmask;
+        sigfillset(&sigmask);
+        sigdelset(&sigmask, SIGINT);
+        while(sigflag!=-1){
             rdset=set;
-            if(select(fd_num+1,&rdset,NULL,NULL,NULL)!=-1){
+            if(pselect(fd_num+1,&rdset,NULL,NULL,NULL,&sigmask)!=-1){
                 for (int i=0;i<fd_num+1;i++){
                     if (FD_ISSET(i,&rdset)){
                         if (i==welcomeSocket){
@@ -115,9 +114,11 @@ int main(int argc, char* argv[]){
             *endWorkerSignal=-1;
             push(q,endWorkerSignal);
         }
-        for(int i=0;i<n_workers;++i) {
-            pthread_join(threadArray[i], NULL);
+        for(int i=0;i<n_workers;i++){
+            pthread_join(threadArray[i],NULL);
         }
+        pthread_mutex_destroy(&m);
+        deleteQueue(q);
         unlink(path);
         fclose(flog);
         fclose(fin);
@@ -127,7 +128,8 @@ int main(int argc, char* argv[]){
     else if(ferror(fin)){
         perror("Errore durante la lettura del file contentente i record\n");
     }  
-    _exit(EXIT_SUCCESS);
+    printf("Terminazione server: %s\n",name_bib);
+    return 0;
 }
 
 void dumpRecord(char* filename, Elem* head){
@@ -373,10 +375,9 @@ void* worker(void* args){
     Elem* node=((arg_t*)args)->list;
     pthread_mutex_t* m=((arg_t*)args)->mutex;
     FILE* flog=((arg_t*)args)->flog;
-    int fd=0;
 	while(sigflag!=-1){
         int* ftemp=(int*)pop(q);
-        fd=*ftemp;
+        int fd=*ftemp;
         free(ftemp);
         if(fd!=-1){
             unsigned int length;
@@ -466,7 +467,7 @@ void* worker(void* args){
                                 }
                                 offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mon + 1);
                                 offset += sprintf(node->val->prestito + offset, "-");
-                                offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_year + 1900);
+                                offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_year + 1900 + 1); //prestitio dura un anno
                                 offset += sprintf(node->val->prestito + offset, " ");
                                 if(currentTime->tm_hour<10){
                                     offset += sprintf(node->val->prestito + offset, "%d", 0);
@@ -526,8 +527,7 @@ void* worker(void* args){
             free(buff);
         }
 	}
-    printf("Thread ID: %ld è terminato\n",pthread_self());
-	return NULL;
+    pthread_exit(NULL);
 }
 
 Book_t* recordToBook(char* riga, Book_t* book){
@@ -669,13 +669,4 @@ int countAttributes(char* riga){
 
 static void gestore (int signum) {
     sigflag=-1;
-    if(signum==2){
-        printf("\nRICEVUTO SEGNALE SIGINT\n");
-        printf("Terminazione server\n");
-    }else if(signum==15){
-        printf("\nRICEVUTO SEGNALE SIGTERM\n");
-        printf("Terminazione server\n");
-    }else{
-        printf("\nRICEVUTO SEGNALE %d\n",signum);
-    }
 }

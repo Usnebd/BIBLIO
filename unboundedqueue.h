@@ -24,6 +24,7 @@ typedef struct Queue {
     unsigned long  qlen;    // lunghezza 
     pthread_mutex_t qlock;
     pthread_cond_t  qcond;
+    int inUse;
 } Queue_t;
 
 

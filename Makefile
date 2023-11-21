@@ -2,39 +2,47 @@
 
 CC=gcc
 CFLAGS=-lpthread
-objects= bibserver bibclient
+objects=bibserver bibclient
+garbage=freeBook.o bookToRecord.o unboundedqueue.o bibclient.o bibserver.o
 
-all: bibserver bibclient
-	rm -f freeBook.o bookToRecord.o unboundedqueue.o bibclient.o bibserver.o
+all: $(objects)
+	rm -f $(garbage)
 
 bibserver: bibserver.o unboundedqueue.o bookToRecord.o freeBook.o
-	gcc -o bibserver bibserver.o freeBook.o bookToRecord.o unboundedqueue.o -lpthread
+	$(CC) -o $@ $^ $(CFLAGS)
 
 bibserver.o: bibserver.c bibserver.h 
-	gcc -c bibserver.c -o bibserver.o -lpthread
+	$(CC) -c $< -o $@ $(CFLAGS)
 
 bibclient: bibclient.o freeBook.o bookToRecord.o structures.h
-	gcc -o bibclient bibclient.o freeBook.o bookToRecord.o
+	$(CC) -o $@ $^
 
 bibclient.o: bibclient.c structures.h
-	gcc -c bibclient.c -o bibclient.o
+	$(CC) -c $< -o $@
 
 freeBook.o: freeBook.c freeBook.h
-	gcc -c freeBook.c -o freeBook.o
+	$(CC) -c $< -o $@
 
 bookToRecord.o: bookToRecord.c bookToRecord.h
-	gcc -c bookToRecord.c -o bookToRecord.o
+	$(CC) -c $< -o $@
 
 unboundedqueue.o: unboundedqueue.c unboundedqueue.h
-	gcc -c unboundedqueue.c -o unboundedqueue.o
+	$(CC) -c $< -o $@
 
-testserver:	bibserver
-	echo "running server"
-	./bibserver Vercelli bib1.txt 3
-
-testclient: bibclient
-	echo "running client"
-	./bibclient --editore="EQR"
-
+test: $(objects)
+	cat /dev/null > bib.conf
+	rm -f $(garbage)
+	echo "running test"
+	./bibserver Pisa bib1.txt 5 &
+	./bibserver Carrara bib2.txt 4 &
+	./bibserver Siena bib3.txt 3 &
+	./bibserver Arezzo bib4.txt 2 &
+	./bibserver Firenze bib5.txt 1 &
+	sleep 1
+	./testclient.sh
+	pkill -f -SIGINT "bibserver"
+	sleep 10
+	./bibaccess.sh --query Pisa.log Carrara.log Siena.log Arezzo.log Firenze.log
 clean:
-	rm -f *.o bibserver bibclient
+	rm -f *.o *.log $(objects)
+	cat /dev/null > bib.conf

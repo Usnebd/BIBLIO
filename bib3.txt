@@ -1,0 +1,5 @@
+autore: Simenon, Georges; titolo: Maigret et la jeune morte; editore: Presses de la Cite; anno: 1954; nota: Edizione Francese; collocazione: KK.ss32; descrizione_fisica: 105p.; luogo_pubblicazione: Paris; prestito: ;
+autore: Vasquez Montalban, Manuel; titolo: La soledad del manager; editore: Planeta Editorial; anno: 1977; collocazione: CNgg.45; descrizione_fisica: 213 p., softcov,  13 cm; luogo_pubblicazione: Barcelona; prestito: ;
+autore: Taibo II, Paco Ignacio; titolo: Dias De Combate; editore: Planeta Mexicana; anno: 1986; collocazione: XXdfg; descrizione_fisica: 239pp.; luogo_pubblicazione: Ciudad De Mexico; prestito: ;
+autore: Fruttero, Carlo; autore: Lucentini, Franco; titolo: La donna della domenica; editore: Mondadori; anno: 1972; collocazione: df.563; descrizione_fisica: 480pp.; luogo_pubblicazione: Milano; prestito: 21-11-2023 11:05:49;
+autore: Chandler, Raymond; titolo: The big Sleep; editore: Penguin; anno: 1955; collocazione: WWhh.54; descrizione_fisica: 137p; luogo_pubblicazione: New York; prestito: ;

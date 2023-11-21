@@ -15,7 +15,7 @@
 
 static inline Node_t  *allocNode()                  { return malloc(sizeof(Node_t));  }
 static inline Queue_t *allocQueue()                 { return malloc(sizeof(Queue_t)); }
-static inline void freeNode(Node_t *node)           { free((void*)node); }
+static inline void freeNode(Node_t *node)           { free(node); }
 static inline void LockQueue(Queue_t *q)            { LOCK(&q->qlock);   }
 static inline void UnlockQueue(Queue_t *q)          { UNLOCK(&q->qlock); }
 static inline void UnlockQueueAndWait(Queue_t *q)   { WAIT(&q->qcond, &q->qlock); }
@@ -45,15 +45,20 @@ Queue_t *initQueue() {
 }
 
 void deleteQueue(Queue_t *q) {
-    while(q->head != q->tail) {
-	Node_t *p = (Node_t*)q->head;
-	q->head = q->head->next;
-	freeNode(p);
-    }
-    if (q->head) freeNode((void*)q->head);
-    if (&q->qlock)  pthread_mutex_destroy(&q->qlock);
-    if (&q->qcond)  pthread_cond_destroy(&q->qcond);
-    free(q);
+   LockQueue(q);
+   q->inUse = 0;
+   while (q->head != q->tail) {
+     Node_t *p = (Node_t *) q->head;
+     q->head = q->head->next;
+     freeNode(p);
+   }
+   if (q->head)
+     freeNode((void *) q->head);
+   if (&q->qlock)
+     pthread_mutex_destroy(&q->qlock);
+   if (&q->qcond)
+     pthread_cond_destroy(&q->qcond);
+   free(q);
 }
 
 int push(Queue_t *q, void *data) {

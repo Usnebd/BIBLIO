@@ -1,0 +1,6 @@
+autore: Dick, Philip K.; titolo: Do Androids Dream of Electric Sheep?; editore: Doubleday; anno: 1968; collocazione: SF.54.br; descrizione_fisica: 210p; luogo_pubblicazione: New York; prestito: ;
+autore: Di Cosmo, Roberto; autore: Nora, Dominique; titolo: Hijacking the World - The dark side of Microsoft; editore: 00h00; anno: 1998; nota: On line publishing; collocazione: WW.54; descrizione_fisica: 107p; luogo_pubblicazione: Paris; prestito: ;
+autore: Knuth, Donald; titolo: Volume 3: Sorting and Searching. Second Edition; editore: Addison-Wesley; anno: 1998; collocazione: ff.567; descrizione_fisica: xiv+780pp.+foldout; luogo_pubblicazione: Reading MA; prestito: ;
+autore: Bentley, Jon; titolo: Programming Pearls (2nd Edition); editore: Addison-Wesley; anno: 1999; collocazione: Q446 58; descrizione_fisica: 239 + xi pp.; luogo_pubblicazione: Reading MA; prestito: ;
+autore: Tanenbaum, Andrew S.; titolo: Computer Networks(Third Edition); editore: Prentice Hall PTR; anno: 1996; collocazione: CN.45; descrizione_fisica: 813 p., softcov,  13 cm; luogo_pubblicazione: Upper Saddle River, NY; prestito: ;
+autore: Waiss, Pierre; autore: Leroy, Xavier; titolo: Le langage CAML; editore: InterEditions; anno: 1993; nota: Edizione Francese; collocazione: KK.Hl32; descrizione_fisica: 406p., softcov,  13 cm; luogo_pubblicazione: Paris; prestito: ;
