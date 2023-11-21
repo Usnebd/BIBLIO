@@ -94,7 +94,6 @@ int main(int argc, char* argv[]){
                     if (FD_ISSET(i,&rdset)){
                         if (i==welcomeSocket){
                             int fd_c=accept(welcomeSocket, NULL,0);
-                            printf("E' arrivato un cliente \n");
                             FD_SET(fd_c,&set);
                             if(fd_c>fd_num)
                                 fd_num=fd_c;
@@ -372,7 +371,7 @@ bool isAlreadyPresent(Book_t* book, Elem* head){
 
 void* worker(void* args){
     Queue_t* q=((arg_t*)args)->q;
-    Elem* node=((arg_t*)args)->list;
+    Elem* head=((arg_t*)args)->list;
     pthread_mutex_t* m=((arg_t*)args)->mutex;
     FILE* flog=((arg_t*)args)->flog;
 	while(sigflag!=-1){
@@ -380,6 +379,7 @@ void* worker(void* args){
         int fd=*ftemp;
         free(ftemp);
         if(fd!=-1){
+            Elem* node=head;
             unsigned int length;
             memset(&length,0,sizeof(length));
             char type;

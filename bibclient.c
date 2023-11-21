@@ -83,7 +83,7 @@ int main(int argc, char* argv[]){
                             sleep(1);
                         }else {exit(EXIT_FAILURE);}
                     }
-                    write(serverSocket, message, 1+sizeof(unsigned int)+length);
+                    write(serverSocket, message, 2+sizeof(unsigned int)+length);
                     //fa una write unica che contiente tutto
                     char* data=(char*)malloc(BUFFSIZE);
                     while(read(serverSocket,data,1)){

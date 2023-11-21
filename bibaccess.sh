@@ -21,7 +21,7 @@ done
 
 # Inizializza la somma totale
 totalsum=0
-
+echo
 # Itera sui file
 for file in "$@"; do
     sum=0

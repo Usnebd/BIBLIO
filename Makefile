@@ -1,4 +1,4 @@
-.PHONY: all clean testserver testclient
+.PHONY: all clean test
 
 CC=gcc
 CFLAGS=-lpthread
@@ -33,16 +33,17 @@ test: $(objects)
 	cat /dev/null > bib.conf
 	rm -f $(garbage)
 	echo "running test"
-	./bibserver Pisa bib1.txt 5 &
-	./bibserver Carrara bib2.txt 4 &
+	./bibserver Pisa bib1.txt 4 &
+	./bibserver Grosseto bib2.txt 5 &
 	./bibserver Siena bib3.txt 3 &
 	./bibserver Arezzo bib4.txt 2 &
 	./bibserver Firenze bib5.txt 1 &
 	sleep 1
 	./testclient.sh
+	echo
 	-pkill -f -SIGINT "bibserver"
 	sleep 10
-	./bibaccess.sh --query Pisa.log Carrara.log Siena.log Arezzo.log Firenze.log
+	./bibaccess.sh --query Pisa.log Grosseto.log Siena.log Arezzo.log Firenze.log
 clean:
 	rm -f *.o *.log $(objects)
 	cat /dev/null > bib.conf

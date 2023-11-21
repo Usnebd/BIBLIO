@@ -3,7 +3,7 @@
 ./bibclient --autore="Di Ciccio, Antonio" -p
 ./bibclient --autore="Kernighan, Brian W."
 ./bibclient --autore="Vasquez Montalban, Manuel"
-./bibclient --autore="Aho, Alfred V." -p
+./bibclient --autore="Aho, Alfred V."
 ./bibclient --autore="Di Cosmo, Roberto"
 sleep 1
 ./bibclient --titolo="Manuale di architettura pisana" -p
@@ -18,10 +18,10 @@ sleep 1
 ./bibclient --descrizione_fisica="1434 p., hardcov,  27 cm" 
 ./bibclient --autore="Knuth, Donald"
 sleep 1
-./bibclient --autore="Melis, Antonio Pietro Angelo" -p
+./bibclient --autore="Melis, Antonio Pietro Angelo"
 ./bibclient --autore="Davide"
-./bibclient --autore="Taibo II, Paco Ignacio" --collocazione="XXdfg"
-./bibclient --autore="Luccio" -p
+./bibclient --autore="Taibo II, Paco Ignacio" --collocazione="XXdfg" -p
+./bibclient --autore="Luccio, Fabrizio" -p
 ./bibclient --editore="Bompiani"
 sleep 1
 ./bibclient --anno="2011"
@@ -39,11 +39,11 @@ sleep 1
 ./bibclient --descrizione_fisica="123 p., ill,  23 cm"
 ./bibclient --anno="1998"
 ./bibclient --anno="1972"
-./bibclient --descrizione_fisica="1017 p., ill, 23 cm"
+./bibclient --descrizione_fisica="1017 p., ill, 23 cm" -p
 ./bibclient --autore="Nora, Dominique"
 sleep 1
 ./bibclient --nota="Copia del Vescovo"
-./bibclient --luogo_pubblicazione="Boston"
+./bibclient --luogo_pubblicazione="Boston" -p
 ./bibclient --editore="Mondadori"
 ./bibclient --editore="Pearson"
 ./bibclient --titolo="Do Androids Dream of Electric Sheep?"
