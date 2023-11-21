@@ -40,7 +40,7 @@ test: $(objects)
 	./bibserver Firenze bib5.txt 1 &
 	sleep 1
 	./testclient.sh
-	pkill -f -SIGINT "bibserver"
+	-pkill -f -SIGINT "bibserver"
 	sleep 10
 	./bibaccess.sh --query Pisa.log Carrara.log Siena.log Arezzo.log Firenze.log
 clean:
