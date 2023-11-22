@@ -24,6 +24,9 @@ void freeBook(Book_t* book){
     if(book->editore!=NULL){
         free(book->editore);
     }
+    if(book->volume!=NULL){
+        free(book->volume);
+    }
     if(book->luogo_pubblicazione!=NULL){
         free(book->luogo_pubblicazione);
     }
