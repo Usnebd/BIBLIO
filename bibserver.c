@@ -510,8 +510,9 @@ void* worker(void* args){
                     break;
             }
             if(noMatches){
+                unsigned int zero=0;
                 write(fd,"N",1);
-                write(fd,0,sizeof(0));
+                write(fd,&zero,sizeof(zero));
             }
             char str[20];
             if(type=='L'){
