@@ -38,7 +38,7 @@ sleep 1
 sleep 1
 ./bibclient --descrizione_fisica="123 p., ill,  23 cm"
 ./bibclient --anno="1998"
-./bibclient --anno="1972"
+./bibclient --anno="2010"
 ./bibclient --descrizione_fisica="1017 p., ill, 23 cm" -p
 ./bibclient --autore="Nora, Dominique"
 sleep 1
