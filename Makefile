@@ -40,9 +40,9 @@ test: $(objects)
 	./bibserver Firenze bib5.txt 1 &
 	sleep 1
 	./testclient.sh
-	echo
 	-pkill -f -SIGINT "bibserver"
 	sleep 10
+	./bibaccess.sh --loan Pisa.log Grosseto.log Siena.log Arezzo.log Firenze.log
 	./bibaccess.sh --query Pisa.log Grosseto.log Siena.log Arezzo.log Firenze.log
 clean:
 	rm -f *.o *.log $(objects)

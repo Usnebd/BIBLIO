@@ -89,12 +89,10 @@ int main(int argc, char* argv[]){
                     while(read(serverSocket,data,1)){
                         switch (*data){
                             case MSG_NO:
-                                memset(data,0,strlen(data));
                                 read(serverSocket,&length,sizeof(unsigned int));
                                 printf("\n%s: MSG_NO\n",sockname);
                                 break;
                             case MSG_ERROR:
-                                memset(data,0,strlen(data));
                                 read(serverSocket,&length,sizeof(unsigned int));
                                 data=(char*)realloc(data,length);
                                 read(serverSocket,data,length);
@@ -102,7 +100,6 @@ int main(int argc, char* argv[]){
                                 printf("%s\n",data);
                                 break;
                             case MSG_RECORD:
-                                memset(data,0,strlen(data));
                                 read(serverSocket,&length,sizeof(unsigned int));
                                 data=(char*)realloc(data,length);
                                 read(serverSocket,data,length);
@@ -112,6 +109,7 @@ int main(int argc, char* argv[]){
                             default:
                             break;
                         }
+                        memset(data,0,length);
                     }
                     free(data);
                     close(serverSocket);

@@ -391,7 +391,8 @@ void* worker(void* args){
             Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
             memset(book, 0, sizeof(Book_t));
             recordToBook(buff,book);
-            bool noMatches=true;
+            bool noMatches;
+            bool error;
             int queryCount=0;
             switch(type){
                 case MSG_QUERY:
@@ -424,8 +425,10 @@ void* worker(void* args){
 
                 case MSG_LOAN:
                     noMatches=true;
+                    error=true;
                     while(node!=NULL){
                         if(matchElemBook(book,node->val)){
+                            noMatches=false;
                             struct tm loanTime;
                             bool available=false;
                             time_t timestamp = time(NULL);
@@ -448,11 +451,10 @@ void* worker(void* args){
                                     available=true;
                                 }
                             }else{
-                                available=true;
-                                
+                                available=true;    
                             }
                             if(available){
-                                noMatches=false;
+                                error=false;
                                 memset(node->val->prestito, 0, sizeof(node->val->prestito));
 
                                 int offset = 0;  // Inizializza l'offset a 0
@@ -510,9 +512,17 @@ void* worker(void* args){
                     break;
             }
             if(noMatches){
+                error=false;
                 unsigned int zero=0;
                 write(fd,"N",1);
                 write(fd,&zero,sizeof(zero));
+            }
+            if(error){
+                write(fd,"E",1);
+                char errorMsg[] = "Errore, nessun libro disponibile";
+                unsigned int msg_lenght = strlen(errorMsg)+1;
+                write(fd,&msg_lenght,sizeof(unsigned int));
+                write(fd,errorMsg,msg_lenght);
             }
             char str[20];
             if(type=='L'){
@@ -630,7 +640,7 @@ bool matchElemBook(Book_t* book, Book_t* bookNode){
             match=true;
         }          
     }
-    if(book->anno!=0 && bookNode->nota!=0){
+    if(book->anno!=0 && bookNode->anno!=0){
         if(book->anno==bookNode->anno){
             match=true;
         }          

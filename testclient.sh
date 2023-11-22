@@ -1,6 +1,6 @@
 #!/bin/bash
 
-./bibclient --autore="Di Ciccio, Antonio" -p
+./bibclient --autore="Di Ciccio, Antonio"
 ./bibclient --autore="Kernighan, Brian W."
 ./bibclient --autore="Vasquez Montalban, Manuel"
 ./bibclient --autore="Aho, Alfred V."
@@ -18,11 +18,11 @@ sleep 1
 ./bibclient --descrizione_fisica="1434 p., hardcov,  27 cm" 
 ./bibclient --autore="Knuth, Donald"
 sleep 1
-./bibclient --autore="Melis, Antonio Pietro Angelo"
-./bibclient --autore="Davide"
+./bibclient --autore="Melis, Antonio Pietro Angelo" -p
+./bibclient --autore="Lam, Monica S."
 ./bibclient --autore="Taibo II, Paco Ignacio" --collocazione="XXdfg" -p
 ./bibclient --autore="Luccio, Fabrizio" -p
-./bibclient --editore="Bompiani"
+./bibclient --editore="Bompiani" -p
 sleep 1
 ./bibclient --anno="2011"
 ./bibclient --titolo="Computer Architecture, Fifth Edition: A Quantitative Approach"
@@ -34,7 +34,7 @@ sleep 1
 ./bibclient --autore="Pagli, Linda"
 ./bibclient --descrizione_fisica="105p." -p
 ./bibclient --nota="Chapman & Hall/CRC Applied Algorithms and Data Structures series"
-./bibclient --autore="Mirco Giannoni"
+./bibclient --luogo_pubblicazione="Paris" -p
 sleep 1
 ./bibclient --descrizione_fisica="123 p., ill,  23 cm"
 ./bibclient --anno="1998"
