@@ -25,6 +25,9 @@ int main(int argc, char* argv[]){
             }else if(strncmp(argv[i], "--titolo=",9)==0){
                 bookQuery->titolo=(char*)malloc(strlen(argv[i]+9));
                 strcpy(bookQuery->titolo,argv[i]+9);
+            }else if(strncmp(argv[i], "--volume=",9)==0){
+                bookQuery->volume=(char*)malloc(strlen(argv[i]+9));
+                strcpy(bookQuery->titolo,argv[i]+9);
             }else if(strncmp(argv[i], "--editore=",10)==0){
                 bookQuery->editore=(char*)malloc(strlen(argv[i]+10));
                 strcpy(bookQuery->editore,argv[i]+10);

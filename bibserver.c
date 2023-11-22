@@ -38,12 +38,12 @@ int main(int argc, char* argv[]){
                 if(firstIteration){
                     head=elem;
                     firstIteration=false;
-                }else if(isAlreadyPresent(book,head)==false){
-                    elem->next=head;
-                    head=elem;
-                }else{
+                }else if(mergeIfPresent(book,head)){
                     freeBook(book);
                     free(elem);
+                }else{
+                    elem->next=head;
+                    head=elem;
                 }
             }
         }
@@ -173,6 +173,9 @@ void dumpRecord(char* filename, Elem* head){
             if(book->descrizione_fisica!=NULL){
                 offset +=sprintf(record+offset," descrizione_fisica: %s;",book->descrizione_fisica);
             }
+            if(book->volume!=NULL){
+                offset +=sprintf(record+offset," volume: %s;",book->volume);
+            }
             if(book->luogo_pubblicazione!=NULL){
                 offset +=sprintf(record+offset," luogo_pubblicazione: %s;",book->luogo_pubblicazione);
             }
@@ -262,13 +265,13 @@ int aggiornaMax(fd_set set, int max ){
 
 bool equalAuthors(Book_t* book, Book_t* bookNode){
     NodoAutore* bookAuthor= book->autore;
-    NodoAutore* bookNodeAuthor;
+    NodoAutore* bookNodeAuthor=bookNode->autore;
     while(bookAuthor!=NULL){
-        bookNodeAuthor=bookNode->autore;
         bool authorPresent=false;
         while(bookNodeAuthor!=NULL){
-            if(strcmp(bookNode->autore->val, book->autore->val)==0){
+            if(strcmp(bookNodeAuthor->val, bookAuthor->val)==0){
                 authorPresent=true;
+                break;
             }
             bookNodeAuthor=bookNodeAuthor->next;
         }
@@ -276,97 +279,73 @@ bool equalAuthors(Book_t* book, Book_t* bookNode){
             return false;
         }
         bookAuthor=bookAuthor->next;
+        bookNodeAuthor=bookNode->autore;
     }
     return true;
 }
 
-int nullFieldsCount(Book_t* book){
-    int i=0;
-    if(book->titolo==NULL){
-        i++;
-    }
-    if(book->anno==0){
-        i++;
-    }
-    if(book->collocazione==NULL){
-        i++;
-    }
-    if(book->descrizione_fisica==NULL){
-        i++;
-    }
-    if(book->editore==NULL){
-        i++;
-    }
-    if(book->luogo_pubblicazione==NULL){
-        i++;
-    }
-    if(book->prestito==NULL){
-        i++;
-    }
-    if(book->nota==NULL){
-        i++;
-    }
-    return i;
-}
-
-bool isAlreadyPresent(Book_t* book, Elem* head){
+bool mergeIfPresent(Book_t* book, Elem* head){
     Elem* currElem=head;
+    bool result=false;
     while(currElem!=NULL){
-        bool fieldEqual=true; 
-        Book_t* bookNode=currElem->val;   
-        if(nullFieldsCount(book)!=nullFieldsCount(bookNode)){
-            fieldEqual=false;
-        }else{
-            if(book->titolo!=NULL && bookNode->titolo!=NULL){
-                if(strcmp(book->titolo,bookNode->titolo)!=0){
-                    fieldEqual=false;
+        if(matchElemBook(book,currElem->val)){
+            Book_t* bookNode=currElem->val;
+            if(bookNode->titolo==NULL){
+                if(book->titolo!=NULL){
+                    bookNode->titolo=(char*)malloc(strlen(book->titolo)+1);
+                    strcpy(bookNode->titolo,book->titolo);
                 }
             }
-            if(book->anno!=0 && bookNode->anno!=0){
-                if(book->anno!=bookNode->anno){
-                    fieldEqual=false;
+            if(bookNode->anno==0){
+                bookNode->anno=book->anno;
+            }
+            if(bookNode->editore==NULL){
+                if(book->editore!=NULL){
+                    bookNode->editore=(char*)malloc(strlen(book->editore)+1);
+                    strcpy(bookNode->editore,book->editore);
                 }
             }
-            if(book->nota!=NULL && bookNode->nota!=NULL){
-                if(strcmp(book->nota,bookNode->nota)!=0){
-                    fieldEqual=false;
+            if(bookNode->nota==NULL){
+                if(book->nota!=NULL){
+                    bookNode->nota=(char*)malloc(strlen(book->nota)+1);
+                    strcpy(bookNode->nota,book->nota);
                 }
             }
-            if(book->collocazione!=NULL && bookNode->collocazione!=NULL){
-                if(strcmp(book->collocazione,bookNode->collocazione)!=0){
-                    fieldEqual=false;
+            if(bookNode->collocazione==NULL){
+                if(book->collocazione!=NULL){
+                    bookNode->collocazione=(char*)malloc(strlen(book->collocazione)+1);
+                    strcpy(bookNode->collocazione,book->collocazione);
                 }
             }
-            if(book->editore!=NULL && bookNode->editore!=NULL){
-                if(strcmp(book->editore,bookNode->editore)!=0){
-                    fieldEqual=false;
+            if(bookNode->descrizione_fisica==NULL){
+                if(book->descrizione_fisica!=NULL){
+                    bookNode->descrizione_fisica=(char*)malloc(strlen(book->descrizione_fisica)+1);
+                    strcpy(bookNode->descrizione_fisica, book->descrizione_fisica);
                 }
             }
-            if(book->descrizione_fisica!=NULL && bookNode->descrizione_fisica!=NULL){
-                if(strcmp(book->descrizione_fisica,bookNode->descrizione_fisica)!=0){
-                    fieldEqual=false;
+            if(bookNode->volume==NULL){
+                if(book->volume!=NULL){
+                    bookNode->volume=(char*)malloc(strlen(book->volume)+1);
+                    strcpy(bookNode->volume,book->volume);
                 }
             }
-            if(book->luogo_pubblicazione!=NULL && bookNode->luogo_pubblicazione!=NULL){
-                if(strcmp(book->luogo_pubblicazione,bookNode->luogo_pubblicazione)!=0){
-                    fieldEqual=false;
+            if(bookNode->luogo_pubblicazione==NULL){
+                if(book->luogo_pubblicazione!=NULL){
+                    bookNode->luogo_pubblicazione=(char*)malloc(strlen(book->luogo_pubblicazione)+1);
+                    strcpy(bookNode->luogo_pubblicazione,book->luogo_pubblicazione);
                 }
             }
-            if(book->prestito!=NULL && bookNode->prestito!=NULL){
-                if(strcmp(book->prestito,bookNode->prestito)!=0){
-                    fieldEqual=false;
+            if(strcmp(bookNode->prestito,"")==0){
+                if(strcmp(book->prestito,"")!=0){
+                    strcpy(bookNode->prestito,book->prestito);
                 }
             }
+            result=true;
+            break;
         }
-        if(fieldEqual){ //sono uguali fino a prestito, non rimane che verificare autore
-            if(equalAuthors(book,bookNode)){
-                return true;
-            }
-        }else{
-            currElem=currElem->next;
-        }
+        currElem=currElem->next;
     }
-    return false;
+    return result;
 }
 
 void* worker(void* args){
@@ -574,11 +553,31 @@ Book_t* recordToBook(char* riga, Book_t* book){
             char value[value_length+1];
             value[value_length]='\0';
             strncpy(value,subfield,value_length);
+            char formatted_value[2*value_length];
+            strcpy(formatted_value,"");
+            char* tokvalue=strtok(value,",");
+            int toklength;
+            while(tokvalue!=NULL){
+                toklength=strlen(tokvalue);
+                while(tokvalue[toklength-1]==' '){
+                    toklength--;
+                }
+                strncat(formatted_value,tokvalue,toklength);
+                tokvalue=strtok(NULL,",");
+                if(tokvalue!=NULL){
+                    strcat(formatted_value,",");
+                    if(strspn(tokvalue," ")>1){
+                        tokvalue=tokvalue+strspn(tokvalue," ")-1;
+                    }else if(strspn(tokvalue," ")==0){
+                        strcat(formatted_value," ");
+                    }
+                }
+            }
             if(strcmp(key,"autore") == 0){
                 NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
                 memset(currentAuthor, 0, sizeof(NodoAutore));
-                currentAuthor->val=(char*)malloc(strlen(value)+1);
-                strcpy(currentAuthor->val,value);
+                currentAuthor->val=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(currentAuthor->val,formatted_value);
                 if(firstIteration){
                     previousAuthor=currentAuthor;
                     book->autore=currentAuthor;
@@ -589,27 +588,30 @@ Book_t* recordToBook(char* riga, Book_t* book){
                 }
                 n_autori++;
             }else if(strcmp(key,"titolo") == 0){
-                book->titolo=(char*)malloc(strlen(value)+1);
-                strcpy(book->titolo,value);
+                book->titolo=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(book->titolo,formatted_value);
             }else if(strcmp(key,"editore") == 0){
-                book->editore=(char*)malloc(strlen(value)+1);
-                strcpy(book->editore,value);
+                book->editore=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(book->editore,formatted_value);
             }else if(strcmp(key,"nota") == 0){
-                book->nota=(char*)malloc(strlen(value)+1);
-                strcpy(book->nota,value);
+                book->nota=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(book->nota,formatted_value);
             }else if(strcmp(key,"collocazione") == 0){
-                book->collocazione=(char*)malloc(strlen(value)+1);
-                strcpy(book->collocazione,value);
+                book->collocazione=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(book->collocazione,formatted_value);
             }else if(strcmp(key,"luogo_pubblicazione") == 0){
-                book->luogo_pubblicazione=(char*)malloc(strlen(value)+1);
-                strcpy(book->luogo_pubblicazione,value);
+                book->luogo_pubblicazione=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(book->luogo_pubblicazione,formatted_value);
             }else if(strcmp(key,"anno") == 0){
-                book->anno=atoi(value);
+                book->anno=atoi(formatted_value);
             }else if(strcmp(key,"prestito") == 0){
-                strcpy(book->prestito,value);
+                strcpy(book->prestito,formatted_value);
             }else if(strcmp(key,"descrizione_fisica") == 0){
-                book->descrizione_fisica=(char*)malloc(strlen(value)+1);
-                strcpy(book->descrizione_fisica,value);
+                book->descrizione_fisica=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(book->descrizione_fisica,formatted_value);
+            }else if(strcmp(key,"volume") == 0){
+                book->volume=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(book->volume,formatted_value);
             }  
         }
     }
@@ -622,12 +624,8 @@ Book_t* recordToBook(char* riga, Book_t* book){
 bool matchElemBook(Book_t* book, Book_t* bookNode){
     bool match=false;
     if(book->autore!=NULL && bookNode->autore!=NULL){
-        NodoAutore* currAuthor=bookNode->autore;
-        while(currAuthor != NULL && currAuthor->val != NULL){
-            if(strcmp(currAuthor->val,book->autore->val)==0){
-                match=true;
-            }
-            currAuthor=currAuthor->next;
+        if(equalAuthors(book,bookNode)){
+            match=true;
         }
     }
     if(book->titolo!=NULL && bookNode->titolo!=NULL){
@@ -662,6 +660,11 @@ bool matchElemBook(Book_t* book, Book_t* bookNode){
     }
     if(book->descrizione_fisica!=NULL && bookNode->descrizione_fisica!=NULL){
         if(strcmp(bookNode->descrizione_fisica,book->descrizione_fisica)==0){
+            match=true;
+        }          
+    }
+    if(book->volume!=NULL && bookNode->volume!=NULL){
+        if(strcmp(bookNode->volume,book->volume)==0){
             match=true;
         }          
     }
