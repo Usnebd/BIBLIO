@@ -23,6 +23,7 @@ struct
     char* luogo_pubblicazione;
     char* descrizione_fisica;  
     char* volume;
+    char* scaffale;
     char prestito[19];
     struct z* autore;
 }typedef Book_t;

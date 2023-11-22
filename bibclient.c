@@ -40,6 +40,9 @@ int main(int argc, char* argv[]){
             }else if(strncmp(argv[i], "--luogo_pubblicazione=",22)==0){
                 bookQuery->luogo_pubblicazione=(char*)malloc(strlen(argv[i]+22));
                 strcpy(bookQuery->luogo_pubblicazione,argv[i]+22);
+            }else if(strncmp(argv[i], "--scaffale=",11)==0){
+                bookQuery->scaffale=(char*)malloc(strlen(argv[i]+11));
+                strcpy(bookQuery->scaffale,argv[i]+11);
             }else if(strncmp(argv[i], "--anno=",7)==0){
                 bookQuery->anno=atoi(argv[i]+7);
             }else if(strncmp(argv[i], "--descrizione_fisica=",21)==0){

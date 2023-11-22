@@ -88,6 +88,26 @@ int bookToRecord(Book_t* book, char* data){
         strcat(data,book->descrizione_fisica);
         strcat(data, ";");
     }
+    if((book->volume)!=NULL){
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"volume: ");
+        strcat(data,book->volume);
+        strcat(data, ";");
+    }
+    if((book->scaffale)!=NULL){
+        if(notFirstIteration==true){
+            strcat(data," ");
+        }else{
+            notFirstIteration=true;
+        }
+        strcat(data,"scaffale: ");
+        strcat(data,book->scaffale);
+        strcat(data, ";");
+    }
     if(strcmp(book->prestito,"")!=0){
         if(notFirstIteration==true){
             strcat(data," ");

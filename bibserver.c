@@ -178,6 +178,9 @@ void dumpRecord(char* filename, Elem* head){
             if(book->luogo_pubblicazione!=NULL){
                 offset +=sprintf(record+offset," luogo_pubblicazione: %s;",book->luogo_pubblicazione);
             }
+            if(book->scaffale!=NULL){
+                offset +=sprintf(record+offset," scaffale: %s;",book->scaffale);
+            }
             if(book->prestito!=NULL){
                 offset +=sprintf(record+offset," prestito: %s;",book->prestito);
             }
@@ -332,6 +335,12 @@ bool mergeIfPresent(Book_t* book, Elem* head){
                 if(book->luogo_pubblicazione!=NULL){
                     bookNode->luogo_pubblicazione=(char*)malloc(strlen(book->luogo_pubblicazione)+1);
                     strcpy(bookNode->luogo_pubblicazione,book->luogo_pubblicazione);
+                }
+            }
+            if(bookNode->scaffale==NULL){
+                if(book->scaffale!=NULL){
+                    bookNode->scaffale=(char*)malloc(strlen(book->scaffale)+1);
+                    strcpy(bookNode->scaffale,book->scaffale);
                 }
             }
             if(strcmp(bookNode->prestito,"")==0){
@@ -601,6 +610,9 @@ Book_t* recordToBook(char* riga, Book_t* book){
             }else if(strcmp(key,"luogo_pubblicazione") == 0){
                 book->luogo_pubblicazione=(char*)malloc(strlen(formatted_value)+1);
                 strcpy(book->luogo_pubblicazione,formatted_value);
+            }else if(strcmp(key,"scaffale") == 0){
+                book->scaffale=(char*)malloc(strlen(formatted_value)+1);
+                strcpy(book->scaffale,formatted_value);
             }else if(strcmp(key,"anno") == 0){
                 book->anno=atoi(formatted_value);
             }else if(strcmp(key,"prestito") == 0){
@@ -654,6 +666,11 @@ bool matchElemBook(Book_t* book, Book_t* bookNode){
     }
     if(book->luogo_pubblicazione!=NULL && bookNode->luogo_pubblicazione!=NULL){
         if(strcmp(bookNode->luogo_pubblicazione,book->luogo_pubblicazione)==0){
+            match=true;
+        }          
+    }
+    if(book->scaffale!=NULL && bookNode->scaffale!=NULL){
+        if(strcmp(bookNode->scaffale,book->scaffale)==0){
             match=true;
         }          
     }
