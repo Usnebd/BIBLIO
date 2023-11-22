@@ -14,7 +14,6 @@ int main(int argc, char* argv[]){
     char* file_name = argv[2];
     int n_workers = atoi(argv[3]);
     size_t size=SIZE;
-    addBibToConf(name_bib);
     //registro gestore
     struct sigaction s;
     memset(&s,0,sizeof(s));
@@ -24,6 +23,7 @@ int main(int argc, char* argv[]){
     sigaction(SIGTERM,&s,NULL);
     FILE* fin = fopen(file_name,"r");
     if(fin){
+        addBibToConf(name_bib);
         Elem* head=NULL;
         bool firstIteration=true;
         int nchar=0;
@@ -123,11 +123,10 @@ int main(int argc, char* argv[]){
         fclose(fin);
         deleteFromConf(name_bib);
         dumpRecord(file_name,head);
-    }
-    else if(ferror(fin)){
+    }else if(ferror(fin)){
         perror("Errore durante la lettura del file contentente i record\n");
     }  
-    printf("Terminazione server: %s\n",name_bib);
+    printf("\nTerminazione server: %s\n",name_bib);
     return 0;
 }
 

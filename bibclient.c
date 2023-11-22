@@ -93,6 +93,7 @@ int main(int argc, char* argv[]){
                         switch (*data){
                             case MSG_NO:
                                 read(serverSocket,&length,sizeof(unsigned int));
+                                length=1;
                                 printf("\n%s: MSG_NO\n",sockname);
                                 break;
                             case MSG_ERROR:
