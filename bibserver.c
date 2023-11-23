@@ -562,23 +562,31 @@ Book_t* recordToBook(char* riga, Book_t* book){
             char formatted_value[2*value_length];
             strcpy(formatted_value,"");
             char* tokvalue=strtok(value,",");
-            int toklength;
-            while(tokvalue!=NULL){
+            int toklength=strlen(tokvalue);
+            while(tokvalue[toklength-1]==' '){
+                toklength--;
+            }
+            strncat(formatted_value,tokvalue+strspn(tokvalue," "),toklength-strspn(tokvalue," "));
+            char* precTok=(char*)malloc(toklength);
+            strcpy(precTok,tokvalue);
+            while((tokvalue=strtok(NULL,","))!=NULL){
                 toklength=strlen(tokvalue);
                 while(tokvalue[toklength-1]==' '){
                     toklength--;
                 }
-                if(tokvalue!=NULL){
+                if(strcmp(precTok,"")!=0){
                     strcat(formatted_value,",");
-                    if(strspn(tokvalue," ")>1){
-                        tokvalue=tokvalue+strspn(tokvalue," ")-1;
-                    }else if(strspn(tokvalue," ")==0){
-                        strcat(formatted_value," ");
-                    }
+                }
+                if(strspn(tokvalue," ")>1){
+                    tokvalue=tokvalue+strspn(tokvalue," ")-1;
+                }else if(strspn(tokvalue," ")==0){
+                    strcat(formatted_value," ");
                 }
                 strncat(formatted_value,tokvalue,toklength);
-                tokvalue=strtok(NULL,",");
+                precTok=(char*)realloc(precTok,toklength);
+                strcpy(precTok,tokvalue);
             }
+            free(precTok);
             if(strcmp(key,"autore") == 0){
                 NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
                 memset(currentAuthor, 0, sizeof(NodoAutore));
