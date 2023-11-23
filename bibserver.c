@@ -290,7 +290,7 @@ bool isPresent(Book_t* book, Elem* head){
     Elem* currElem=head;
     bool result=false;
     while(currElem!=NULL){
-        if(matchElemBook(book,currElem->val)){
+        if(matchBook(book,currElem->val)){
             Book_t* bookNode=currElem->val;
             if(bookNode->titolo==NULL){
                 if(book->titolo!=NULL){
@@ -383,7 +383,7 @@ void* worker(void* args){
                 case MSG_QUERY:
                     noMatches=true;
                     while(node!=NULL){
-                        if(matchElemBook(book,node->val)){
+                        if(matchBook(book,node->val)){
                             buff=(char*)realloc(buff,SIZE);
                             memset(buff,0,SIZE);
                             bookToRecord(node->val,buff);
@@ -412,7 +412,7 @@ void* worker(void* args){
                     noMatches=true;
                     error=true;
                     while(node!=NULL){
-                        if(matchElemBook(book,node->val)){
+                        if(matchBook(book,node->val)){
                             noMatches=false;
                             struct tm loanTime;
                             bool available=false;
@@ -638,7 +638,7 @@ Book_t* recordToBook(char* riga, Book_t* book){
     return book;
 }
 
-bool matchElemBook(Book_t* book, Book_t* bookNode){
+bool matchBook(Book_t* book, Book_t* bookNode){
     int match=0;
     int bookFieldNum=0;
     if(book->autore!=NULL){
