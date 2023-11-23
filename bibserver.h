@@ -11,7 +11,7 @@ int aggiornaMax(fd_set set, int max );
 int countAttributes(char* str);
 Book_t* recordToBook(char* riga, Book_t* book);
 void* worker(void* args);
-bool matchElemBook(Book_t* book, Book_t* bookNode);
+bool matchBook(Book_t* book, Book_t* bookNode);
 bool isPresent(Book_t* book, Elem* head);
 bool equalAuthors(Book_t* book, Book_t* bookNode);
 void addBibToConf(char* name_bib);
