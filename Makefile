@@ -40,7 +40,7 @@ test: $(objects)
 	./bibserver Firenze bib5.txt 1 &
 	sleep 1
 	./testclient.sh
-	-pkill -f -SIGINT -u $(whoami) "bibserver"
+	-pkill -f -SIGINT "bibserver"
 	sleep 10
 	./bibaccess.sh --loan Pisa.log Lucca.log Siena.log Arezzo.log Firenze.log
 	./bibaccess.sh --query Pisa.log Lucca.log Siena.log Arezzo.log Firenze.log

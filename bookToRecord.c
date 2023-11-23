@@ -10,8 +10,8 @@ int bookToRecord(Book_t* book, char* data){
             strcat(data, nodeAuthor->val);
             strcat(data, ";");
             nodeAuthor=nodeAuthor->next;
+            notFirstIteration=true;
             while(nodeAuthor!=NULL){
-                notFirstIteration=true;
                 strcat(data," ");
                 strcat(data, "autore: ");
                 strcat(data, nodeAuthor->val);
