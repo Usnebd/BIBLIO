@@ -52,19 +52,19 @@ int main(int argc, char* argv[]){
                 type='L';
             }else{
                 printf("Wrong format of args\n");
-                _exit(EXIT_FAILURE);
+                exit(EXIT_FAILURE);
             }
         }
         char buffer[BUFFSIZE];
         memset(buffer,0,BUFFSIZE);
-        unsigned int length=bookToRecord(bookQuery,buffer);
+        unsigned int messagelength=bookToRecord(bookQuery,buffer)+1;
         // Copia il tipo della struct nel buffer
         char* message=(char*)malloc(BUFFSIZE);
         memcpy(&message[0], &type, 1);
         // Copia la lunghezza della struct nel buffer
-        memcpy(&message[1], &length, sizeof(unsigned int));
+        memcpy(&message[1], &messagelength, sizeof(unsigned int));
         // Copia i dati della struct nel buffer
-        memcpy(&message[5], buffer, length);
+        memcpy(&message[1+sizeof(messagelength)], buffer, messagelength);
         size_t size=SIZE;
         struct sockaddr_un sa;
         sa.sun_family=AF_UNIX;
@@ -89,9 +89,10 @@ int main(int argc, char* argv[]){
                             sleep(1);
                         }else {exit(EXIT_FAILURE);}
                     }
-                    write(serverSocket, message, 2+sizeof(unsigned int)+length);
+                    write(serverSocket, message, 1+sizeof(unsigned int)+messagelength);
                     //fa una write unica che contiente tutto
                     char* data=(char*)malloc(BUFFSIZE);
+                    unsigned int length;
                     while(read(serverSocket,data,1)){
                         switch (*data){
                             case MSG_NO:
@@ -132,7 +133,7 @@ int main(int argc, char* argv[]){
     freeBook(bookQuery);
     }else{
         perror("Errore apertura file\n");
-        _exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
-    _exit(EXIT_SUCCESS);
+    exit(EXIT_SUCCESS);
 }

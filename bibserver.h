@@ -12,7 +12,7 @@ int countAttributes(char* str);
 Book_t* recordToBook(char* riga, Book_t* book);
 void* worker(void* args);
 bool matchElemBook(Book_t* book, Book_t* bookNode);
-bool mergeIfPresent(Book_t* book, Elem* head);
+bool isPresent(Book_t* book, Elem* head);
 bool equalAuthors(Book_t* book, Book_t* bookNode);
 void addBibToConf(char* name_bib);
 int nullFieldsCount(Book_t* book);

@@ -8,7 +8,7 @@ volatile int sigflag=0;
 int main(int argc, char* argv[]){
     if(argc!=4){
         printf("Not the right amount of args\n");
-        _exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }
     char* name_bib = argv[1];
     char* file_name = argv[2];
@@ -38,7 +38,7 @@ int main(int argc, char* argv[]){
                 if(firstIteration){
                     head=elem;
                     firstIteration=false;
-                }else if(mergeIfPresent(book,head)){
+                }else if(isPresent(book,head)){
                     freeBook(book);
                     free(elem);
                 }else{
@@ -55,7 +55,7 @@ int main(int argc, char* argv[]){
         FILE* flog=fopen(logName,"w");
         if(ferror(flog)){
             perror("Errore durante la lettura del file di log\n");
-            _exit(EXIT_FAILURE);
+            exit(EXIT_FAILURE);
         }
         struct sockaddr_un sa_server;
         unlink(path);
@@ -181,7 +181,7 @@ void dumpRecord(char* filename, Elem* head){
             if(book->scaffale!=NULL){
                 offset +=sprintf(record+offset," scaffale: %s;",book->scaffale);
             }
-            if(book->prestito!=NULL){
+            if(strcmp(book->prestito,"")!=0){
                 offset +=sprintf(record+offset," prestito: %s;",book->prestito);
             }
             strcat(record,"\n");
@@ -196,7 +196,7 @@ void dumpRecord(char* filename, Elem* head){
         fclose(fin);
     }else if(ferror(fin)){
         perror("Errore durante la lettura del file contentente i record\n");
-        _exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }  
 }
 
@@ -206,7 +206,7 @@ void deleteFromConf(char* name_bib){
     char* riga=(char*)malloc(N);
     if(fconf==NULL){
         perror("errore apertura file bib.conf\n");
-        _exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }else{
         int nchar=0;
         long pos_inizio = 0;
@@ -240,7 +240,7 @@ void addBibToConf(char* name_bib){
     char* riga=(char*)malloc(N);
     if(fconf==NULL){
         perror("errore apertura file bib.conf\n");
-        _exit(EXIT_FAILURE);
+        exit(EXIT_FAILURE);
     }else{
         while(!feof(fconf)){
             if((getline(&riga,&size,fconf))>1){
@@ -249,7 +249,7 @@ void addBibToConf(char* name_bib){
                 char* tok=strtok(NULL,":");
                 if(strcmp(tok,name_bib)==0){             
                     perror("nome biblioteca già preso\n");
-                    _exit(EXIT_FAILURE);
+                    exit(EXIT_FAILURE);
                 }
                 memset(riga,0,N);
             }
@@ -286,7 +286,7 @@ bool equalAuthors(Book_t* book, Book_t* bookNode){
     return true;
 }
 
-bool mergeIfPresent(Book_t* book, Elem* head){
+bool isPresent(Book_t* book, Elem* head){
     Elem* currElem=head;
     bool result=false;
     while(currElem!=NULL){
@@ -368,12 +368,10 @@ void* worker(void* args){
         if(fd!=-1){
             Elem* node=head;
             unsigned int length;
-            memset(&length,0,sizeof(length));
             char type;
             read(fd,&type,1);
             read(fd,&length,sizeof(unsigned int));
-            char* buff = (char*)malloc(length + 1);
-            memset(buff, 0, length + 1);  // Inizializza la memoria allocata a zero
+            char* buff = (char*)malloc(length);
             read(fd,buff,length);
             Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
             memset(book, 0, sizeof(Book_t));
@@ -570,8 +568,6 @@ Book_t* recordToBook(char* riga, Book_t* book){
                 while(tokvalue[toklength-1]==' '){
                     toklength--;
                 }
-                strncat(formatted_value,tokvalue,toklength);
-                tokvalue=strtok(NULL,",");
                 if(tokvalue!=NULL){
                     strcat(formatted_value,",");
                     if(strspn(tokvalue," ")>1){
@@ -580,6 +576,8 @@ Book_t* recordToBook(char* riga, Book_t* book){
                         strcat(formatted_value," ");
                     }
                 }
+                strncat(formatted_value,tokvalue,toklength);
+                tokvalue=strtok(NULL,",");
             }
             if(strcmp(key,"autore") == 0){
                 NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
@@ -633,58 +631,101 @@ Book_t* recordToBook(char* riga, Book_t* book){
 }
 
 bool matchElemBook(Book_t* book, Book_t* bookNode){
-    bool match=false;
-    if(book->autore!=NULL && bookNode->autore!=NULL){
-        if(equalAuthors(book,bookNode)){
-            match=true;
+    int match=0;
+    int bookFieldNum=0;
+    if(book->autore!=NULL){
+        bookFieldNum++;
+        if(bookNode->autore!=NULL){
+            if(equalAuthors(book,bookNode)){
+                match++;
+            }
         }
     }
-    if(book->titolo!=NULL && bookNode->titolo!=NULL){
-        if(strcmp(bookNode->titolo,book->titolo)==0){
-            match=true;
+    if(book->titolo!=NULL){
+        bookFieldNum++;
+        if(bookNode->titolo!=NULL){
+            if(strcmp(bookNode->titolo,book->titolo)==0){
+                match++;
+            } 
+        }         
+    }
+    if(book->editore!=NULL){
+        bookFieldNum++;
+        if(bookNode->editore!=NULL){
+            if(strcmp(bookNode->editore,book->editore)==0){
+                match++;
+            } 
+        }         
+    }
+    if(book->anno!=0){
+        bookFieldNum++;
+        if(bookNode->anno!=0){
+            if(book->anno==bookNode->anno){
+                match++;
+            }
         }          
     }
-    if(book->editore!=NULL && bookNode->editore!=NULL){
-        if(strcmp(bookNode->editore,book->editore)==0){
-            match=true;
+    if(book->nota!=NULL){
+        bookFieldNum++;
+        if(bookNode->nota!=NULL){
+            if(strcmp(bookNode->nota,book->nota)==0){
+                match++;
+            }          
+        }
+    }
+    if(book->collocazione!=NULL){
+        bookFieldNum++;
+        if(bookNode->collocazione!=NULL){
+            if(strcmp(bookNode->collocazione,book->collocazione)==0){
+                match++;
+            }  
+        }        
+    }
+    if(book->luogo_pubblicazione!=NULL){
+        bookFieldNum++;
+        if(bookNode->luogo_pubblicazione!=NULL){
+            if(strcmp(bookNode->luogo_pubblicazione,book->luogo_pubblicazione)==0){
+                match++;
+            }
         }          
     }
-    if(book->anno!=0 && bookNode->anno!=0){
-        if(book->anno==bookNode->anno){
-            match=true;
-        }          
+    if(book->scaffale!=NULL){
+        bookFieldNum++;
+        if(bookNode->scaffale!=NULL){
+            if(strcmp(bookNode->scaffale,book->scaffale)==0){
+                match++;
+            } 
+        }        
     }
-    if(book->nota!=NULL && bookNode->nota!=NULL){
-        if(strcmp(bookNode->nota,book->nota)==0){
-            match=true;
-        }          
+    if(book->descrizione_fisica!=NULL){
+        bookFieldNum++;
+        if(bookNode->descrizione_fisica!=NULL){
+            if(strcmp(bookNode->descrizione_fisica,book->descrizione_fisica)==0){
+                match++;
+            } 
+        }       
     }
-    if(book->collocazione!=NULL && bookNode->collocazione!=NULL){
-        if(strcmp(bookNode->collocazione,book->collocazione)==0){
-            match=true;
-        }          
+    if(book->volume!=NULL){
+        bookFieldNum++;
+        if(bookNode->volume!=NULL){
+            if(strcmp(bookNode->volume,book->volume)==0){
+                match++;
+            } 
+        }         
     }
-    if(book->luogo_pubblicazione!=NULL && bookNode->luogo_pubblicazione!=NULL){
-        if(strcmp(bookNode->luogo_pubblicazione,book->luogo_pubblicazione)==0){
-            match=true;
-        }          
+    if(strcmp(book->prestito,"")!=0){
+        bookFieldNum++;
+        if(strcmp(bookNode->prestito,"")!=0){
+            if(strcmp(bookNode->prestito,book->prestito)==0){
+                match++;
+            } 
+        } 
     }
-    if(book->scaffale!=NULL && bookNode->scaffale!=NULL){
-        if(strcmp(bookNode->scaffale,book->scaffale)==0){
-            match=true;
-        }          
+    if(bookFieldNum>match){
+        return false;
+    }else{
+        return true;
     }
-    if(book->descrizione_fisica!=NULL && bookNode->descrizione_fisica!=NULL){
-        if(strcmp(bookNode->descrizione_fisica,book->descrizione_fisica)==0){
-            match=true;
-        }          
-    }
-    if(book->volume!=NULL && bookNode->volume!=NULL){
-        if(strcmp(bookNode->volume,book->volume)==0){
-            match=true;
-        }          
-    }
-    return match;
 }
 
 int countAttributes(char* riga){
