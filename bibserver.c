@@ -575,7 +575,7 @@ Book_t* recordToBook(char* riga, Book_t* book){
                 toklength--;
             }
             strncat(formatted_value,tokvalue+strspn(tokvalue," "),toklength-strspn(tokvalue," "));
-            char* precTok=(char*)malloc(toklength+1);
+            char* precTok=(char*)malloc(strlen(tokvalue)+1);
             strcpy(precTok,tokvalue);
             while((tokvalue=strtok(NULL,","))!=NULL){
                 toklength=strlen(tokvalue);
