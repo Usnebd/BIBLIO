@@ -13,68 +13,68 @@
 #define BUFFSIZE 1024 
 
 int main(int argc, char* argv[]){
+    Book_t* bookQuery=(Book_t*)malloc(sizeof(Book_t));
+    char type='Q';
+    for(int i=1;i<argc;i++){
+        if(strncmp(argv[i],"--autore=",9)==0){
+            bookQuery->autore=(NodoAutore*)malloc(sizeof(NodoAutore));
+            bookQuery->autore->val=(char*)malloc(strlen(argv[i]+9));
+            strcpy(bookQuery->autore->val,argv[i]+9);
+        }else if(strncmp(argv[i], "--titolo=",9)==0){
+            bookQuery->titolo=(char*)malloc(strlen(argv[i]+9));
+            strcpy(bookQuery->titolo,argv[i]+9);
+        }else if(strncmp(argv[i], "--volume=",9)==0){
+            bookQuery->volume=(char*)malloc(strlen(argv[i]+9));
+            strcpy(bookQuery->titolo,argv[i]+9);
+        }else if(strncmp(argv[i], "--editore=",10)==0){
+            bookQuery->editore=(char*)malloc(strlen(argv[i]+10));
+            strcpy(bookQuery->editore,argv[i]+10);
+        }else if(strncmp(argv[i], "--nota=",7)==0){
+            bookQuery->nota=(char*)malloc(strlen(argv[i]+7));
+            strcpy(bookQuery->nota,argv[i]+7);
+        }else if(strncmp(argv[i], "--collocazione=",15)==0){
+            bookQuery->collocazione=(char*)malloc(strlen(argv[i]+15));
+            strcpy(bookQuery->collocazione,argv[i]+15);
+        }else if(strncmp(argv[i], "--luogo_pubblicazione=",22)==0){
+            bookQuery->luogo_pubblicazione=(char*)malloc(strlen(argv[i]+22));
+            strcpy(bookQuery->luogo_pubblicazione,argv[i]+22);
+        }else if(strncmp(argv[i], "--scaffale=",11)==0){
+            bookQuery->scaffale=(char*)malloc(strlen(argv[i]+11));
+            strcpy(bookQuery->scaffale,argv[i]+11);
+        }else if(strncmp(argv[i], "--anno=",7)==0){
+            bookQuery->anno=atoi(argv[i]+7);
+        }else if(strncmp(argv[i], "--descrizione_fisica=",21)==0){
+            bookQuery->descrizione_fisica=(char*)malloc(strlen(argv[i]+21));
+            strcpy(bookQuery->descrizione_fisica,argv[i]+21);
+        }else if(strcmp(argv[i], "-p")==0){
+            type='L';
+        }else{
+            printf("Wrong format of args\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+    char buffer[BUFFSIZE];
+    memset(buffer,0,BUFFSIZE);
+    unsigned int messagelength=bookToRecord(bookQuery,buffer)+1;
+    // Copia il tipo della struct nel buffer
+    char* message=(char*)malloc(BUFFSIZE);
+    memcpy(&message[0], &type, 1);
+    // Copia la lunghezza della struct nel buffer
+    memcpy(&message[1], &messagelength, sizeof(unsigned int));
+    // Copia i dati della struct nel buffer
+    memcpy(&message[1+sizeof(messagelength)], buffer, messagelength);
+    size_t size=SIZE;
+    struct sockaddr_un sa;
+    sa.sun_family=AF_UNIX;
+    bool emptyConf=true;
     FILE* fconf=fopen("bib.conf","r");
     if(fconf){
-        Book_t* bookQuery=(Book_t*)malloc(sizeof(Book_t));
-        char type='Q';
-        for(int i=1;i<argc;i++){
-            if(strncmp(argv[i],"--autore=",9)==0){
-                bookQuery->autore=(NodoAutore*)malloc(sizeof(NodoAutore));
-                bookQuery->autore->val=(char*)malloc(strlen(argv[i]+9));
-                strcpy(bookQuery->autore->val,argv[i]+9);
-            }else if(strncmp(argv[i], "--titolo=",9)==0){
-                bookQuery->titolo=(char*)malloc(strlen(argv[i]+9));
-                strcpy(bookQuery->titolo,argv[i]+9);
-            }else if(strncmp(argv[i], "--volume=",9)==0){
-                bookQuery->volume=(char*)malloc(strlen(argv[i]+9));
-                strcpy(bookQuery->titolo,argv[i]+9);
-            }else if(strncmp(argv[i], "--editore=",10)==0){
-                bookQuery->editore=(char*)malloc(strlen(argv[i]+10));
-                strcpy(bookQuery->editore,argv[i]+10);
-            }else if(strncmp(argv[i], "--nota=",7)==0){
-                bookQuery->nota=(char*)malloc(strlen(argv[i]+7));
-                strcpy(bookQuery->nota,argv[i]+7);
-            }else if(strncmp(argv[i], "--collocazione=",15)==0){
-                bookQuery->collocazione=(char*)malloc(strlen(argv[i]+15));
-                strcpy(bookQuery->collocazione,argv[i]+15);
-            }else if(strncmp(argv[i], "--luogo_pubblicazione=",22)==0){
-                bookQuery->luogo_pubblicazione=(char*)malloc(strlen(argv[i]+22));
-                strcpy(bookQuery->luogo_pubblicazione,argv[i]+22);
-            }else if(strncmp(argv[i], "--scaffale=",11)==0){
-                bookQuery->scaffale=(char*)malloc(strlen(argv[i]+11));
-                strcpy(bookQuery->scaffale,argv[i]+11);
-            }else if(strncmp(argv[i], "--anno=",7)==0){
-                bookQuery->anno=atoi(argv[i]+7);
-            }else if(strncmp(argv[i], "--descrizione_fisica=",21)==0){
-                bookQuery->descrizione_fisica=(char*)malloc(strlen(argv[i]+21));
-                strcpy(bookQuery->descrizione_fisica,argv[i]+21);
-            }else if(strcmp(argv[i], "-p")==0){
-                type='L';
-            }else{
-                printf("Wrong format of args\n");
-                exit(EXIT_FAILURE);
-            }
-        }
-        char buffer[BUFFSIZE];
-        memset(buffer,0,BUFFSIZE);
-        unsigned int messagelength=bookToRecord(bookQuery,buffer)+1;
-        // Copia il tipo della struct nel buffer
-        char* message=(char*)malloc(BUFFSIZE);
-        memcpy(&message[0], &type, 1);
-        // Copia la lunghezza della struct nel buffer
-        memcpy(&message[1], &messagelength, sizeof(unsigned int));
-        // Copia i dati della struct nel buffer
-        memcpy(&message[1+sizeof(messagelength)], buffer, messagelength);
-        size_t size=SIZE;
-        struct sockaddr_un sa;
-        sa.sun_family=AF_UNIX;
-        bool emptyConf=true;
         char* sockname;
         char* riga=(char*)malloc(SIZE);
         int nchar;
         while((nchar=getline(&riga,&size,fconf))!=-1){
             if(nchar!=0 && nchar!=1){
-               emptyConf=false;
+            emptyConf=false;
                 strtok(riga,",");
                 strtok(riga,":");
                 sockname=strtok(NULL,":");
