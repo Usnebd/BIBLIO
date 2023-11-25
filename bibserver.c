@@ -6,6 +6,18 @@
 volatile int sigflag=0;
 
 int main(int argc, char* argv[]){
+    struct sigaction s;
+    sigset_t sigmask;
+    sigfillset(&sigmask);
+    pthread_sigmask(SIG_SETMASK,&sigmask,NULL);
+    //blocco tutti i segnali
+    memset(&s,0,sizeof(s));
+    sigset_t handlerMask;
+    sigfillset(&handlerMask);
+    s.sa_mask=handlerMask;
+    s.sa_handler=gestore; //registro gestore
+    sigaction(SIGINT,&s,NULL);
+    sigaction(SIGTERM,&s,NULL);
     if(argc!=4){
         printf("Not the right amount of args\n");
         exit(EXIT_FAILURE);
@@ -13,14 +25,7 @@ int main(int argc, char* argv[]){
     char* name_bib = argv[1];
     char* file_name = argv[2];
     int n_workers = atoi(argv[3]);
-    size_t size=SIZE;
-    //registro gestore
-    struct sigaction s;
-    memset(&s,0,sizeof(s));
-    s.sa_handler=gestore;
-    //installo il gestore
-    sigaction(SIGINT,&s,NULL);
-    sigaction(SIGTERM,&s,NULL);
+    size_t size=SIZE;    
     FILE* fin = fopen(file_name,"r");
     if(fin){
         addBibToConf(name_bib);
@@ -84,11 +89,11 @@ int main(int argc, char* argv[]){
             pthread_create(&tid,NULL,worker,&threadArgs);
             threadArray[j]=tid;
         }
-        sigset_t sigmask;
-        sigfillset(&sigmask);
-        sigdelset(&sigmask, SIGINT);
+        rdset=set;
+        sigdelset(&sigmask,SIGINT);
+        sigdelset(&sigmask,SIGTERM);
+        pthread_sigmask(SIG_SETMASK,&sigmask,NULL);
         while(sigflag!=-1){
-            rdset=set;
             if(pselect(fd_num+1,&rdset,NULL,NULL,NULL,&sigmask)!=-1){
                 for (int i=0;i<fd_num+1;i++){
                     if (FD_ISSET(i,&rdset)){
@@ -107,7 +112,10 @@ int main(int argc, char* argv[]){
                     }
                 }
             }
+            rdset=set;
 	    }
+        sigfillset(&sigmask);
+        pthread_sigmask(SIG_SETMASK,&sigmask,NULL);
         for(int i=0;i<n_workers;i++){
             int* endWorkerSignal=(int*)malloc(sizeof(int));
             *endWorkerSignal=-1;
@@ -720,14 +728,6 @@ bool matchBook(Book_t* book, Book_t* bookNode){
                 match++;
             } 
         }         
-    }
-    if(strcmp(book->prestito,"")!=0){
-        bookFieldNum++;
-        if(strcmp(bookNode->prestito,"")!=0){
-            if(strcmp(bookNode->prestito,book->prestito)==0){
-                match++;
-            } 
-        } 
     }
     if(bookFieldNum>match){
         return false;
