@@ -3,18 +3,18 @@
 #define UNIX_PATH_MAX 80
 #define N 100
 
-volatile int sigflag=0;
+volatile int sigflag=0;         //variabile settata dal gestore dei segnali SIGINT e SIGTERM
 
 int main(int argc, char* argv[]){
     struct sigaction s;
-    sigset_t sigmask;
-    sigfillset(&sigmask);
-    pthread_sigmask(SIG_SETMASK,&sigmask,NULL);
-    //blocco tutti i segnali
-    memset(&s,0,sizeof(s));
-    sigset_t handlerMask;
-    sigfillset(&handlerMask);
-    s.sa_mask=handlerMask;
+    sigset_t sigmask;       //creazione maschera 
+    sigfillset(&sigmask);   //setto tutti i bit della maschera
+    pthread_sigmask(SIG_SETMASK,&sigmask,NULL);      //blocco tutti i segnali
+
+    memset(&s,0,sizeof(s)); 
+    sigset_t handlerMask;                 //creo la maschera che passerò a sigaction
+    sigfillset(&handlerMask);           
+    s.sa_mask=handlerMask;                //quando eseguirò il gestore mi baserò sulla handlerMask per capire quali segnali mascherare
     s.sa_handler=gestore; //registro gestore
     sigaction(SIGINT,&s,NULL);
     sigaction(SIGTERM,&s,NULL);
@@ -24,59 +24,60 @@ int main(int argc, char* argv[]){
     }
     char* name_bib = argv[1];
     char* file_name = argv[2];
-    int n_workers = atoi(argv[3]);
+    int n_workers = atoi(argv[3]);              //leggo i parametri
     size_t size=SIZE;    
-    FILE* fin = fopen(file_name,"r");
+    FILE* fin = fopen(file_name,"r");           //apro il file record
     if(fin){
-        addBibToConf(name_bib);
+        addBibToConf(name_bib);                 //aggiungo l'indirizzo del server al file bib.conf
         Elem* head=NULL;
         bool firstIteration=true;
         int nchar=0;
         char* riga=(char*)malloc(SIZE);
-        while((nchar=getline(&riga,&size,fin))!=-1){
-            if(nchar!=0 && nchar!=1){
-                Book_t* book=(Book_t*)malloc(sizeof(Book_t));
-                memset(book, 0, sizeof(Book_t));
-                recordToBook(riga,book);
-                Elem* elem=(Elem*)malloc(sizeof(Elem));
-                elem->val=book;
-                if(firstIteration){
+        while((nchar=getline(&riga,&size,fin))!=-1){        //finchè getline non è arrivato in fondo al file
+            if(nchar!=0 && nchar!=1){                       //se non è una riga vuota 
+                Book_t* book=(Book_t*)malloc(sizeof(Book_t));       //alloco memoria per il libro
+                memset(book, 0, sizeof(Book_t));                    //pulisco la memoria dei campi attualmente vuoti
+                recordToBook(riga,book);                            //leggo la riga e la traduco in libro
+                Elem* elem=(Elem*)malloc(sizeof(Elem));             //alloco memoria per il nodo della lista
+                elem->val=book;                                     //assegno il riferimento al libro al valore del nodo
+                if(firstIteration){                                 //se è la prima 
                     head=elem;
                     firstIteration=false;
-                }else if(isPresent(book,head)){
-                    freeBook(book);
-                    free(elem);
+                }else if(isPresent(book,head)){                     //se il libro è già presente nella lista
+                    freeBook(book);                                 //dealloco la memoria di tutto il libro
+                    free(elem);                                 
                 }else{
-                    elem->next=head;
-                    head=elem;
+                    elem->next=head;                                //altrimenti faccio puntare il nodo precedente
+                    head=elem;                                      //la testa punta al nodo attuale
                 }
             }
         }
+        fclose(fin);                                                //chiudo il file record, adesso non mi serve più
         free(riga);
-        char path[strlen(name_bib)+1];
-        char logName[strlen(name_bib)+strlen(".log")];
+        char path[strlen(name_bib)+1];                              //costruisco la stringa che contiene l'indirizzo
+        char logName[strlen(name_bib)+strlen(".log")];              //costruisco la stringa che rappresenta il nome del file di log
         sprintf(path,"./%s",name_bib);
         sprintf(logName,"%s.log",name_bib);
-        FILE* flog=fopen(logName,"w");
-        if(ferror(flog)){
+        FILE* flog=fopen(logName,"w");                              //apro in scrittura il file di log
+        if(ferror(flog)){                                           //se ci sono errori all'apertura esco
             perror("Errore durante la lettura del file di log\n");
             exit(EXIT_FAILURE);
         }
         struct sockaddr_un sa_server;
-        unlink(path);
-        strncpy(sa_server.sun_path,path,UNIX_PATH_MAX);
-        sa_server.sun_family=AF_UNIX;
-        int welcomeSocket=socket(AF_UNIX,SOCK_STREAM,0);
-        bind(welcomeSocket,(struct sockaddr*)&sa_server,sizeof(sa_server));
-        listen(welcomeSocket,SOMAXCONN);
+        unlink(path);                                               //se c'è una soscket o file con lo stesso nome di path lo rimuovo
+        strncpy(sa_server.sun_path,path,UNIX_PATH_MAX);             //copio il path sulla struct
+        sa_server.sun_family=AF_UNIX;                               //imposto il dominio AF_UNIX alla struct sockaddr_un
+        int welcomeSocket=socket(AF_UNIX,SOCK_STREAM,0);            //creo il socket connection-oriented
+        bind(welcomeSocket,(struct sockaddr*)&sa_server,sizeof(sa_server)); //associo il socket ad un indirizzo
+        listen(welcomeSocket,SOMAXCONN);                            //segnalo che il socket accetta connessioni
 
-        fd_set set, rdset;
-        FD_ZERO(&set);
-        FD_SET(welcomeSocket,&set);
+        fd_set set, rdset;      //creo un fd_set che conterrà l'insieme dei file descriptor da tener traccia e un di quelli pronti alla lettura
+        FD_ZERO(&set);          //azzero il set
+        FD_SET(welcomeSocket,&set);     //imposto la socket del server nel set
         int fd_num=0;
-        if (welcomeSocket > fd_num) fd_num = welcomeSocket;
-        Queue_t* q=initQueue();
-        pthread_mutex_t m;
+        if (welcomeSocket > fd_num) fd_num = welcomeSocket;    //mantengo il massimo indice di descrittore attivo in fd_num
+        Queue_t* q=initQueue();                                //creo la coda di priorità
+        pthread_mutex_t m;                                     //creo il mutex
         pthread_mutex_init(&m,NULL);
         arg_t threadArgs;
         threadArgs.q=q;
@@ -84,53 +85,52 @@ int main(int argc, char* argv[]){
         threadArgs.mutex=&m;
         threadArgs.flog=flog;
         pthread_t threadArray[n_workers];
-        for(int j=0;j<n_workers;j++){
+        for(int j=0;j<n_workers;j++){                         //avvio la threadPool
             pthread_t tid;
             pthread_create(&tid,NULL,worker,&threadArgs);
             threadArray[j]=tid;
         }
-        rdset=set;
-        sigdelset(&sigmask,SIGINT);
-        sigdelset(&sigmask,SIGTERM);
-        pthread_sigmask(SIG_SETMASK,&sigmask,NULL);
-        while(sigflag!=-1){
-            if(pselect(fd_num+1,&rdset,NULL,NULL,NULL,&sigmask)!=-1){
-                for (int i=0;i<fd_num+1;i++){
-                    if (FD_ISSET(i,&rdset)){
-                        if (i==welcomeSocket){
-                            int fd_c=accept(welcomeSocket, NULL,0);
-                            FD_SET(fd_c,&set);
-                            if(fd_c>fd_num)
+        rdset=set;                                            //imposto il set di file pronti alla lettura
+        sigdelset(&sigmask,SIGINT);                           //rimuovo dal set di segnali da ignorare SIGINT
+        sigdelset(&sigmask,SIGTERM);                          //rimuovo dal set di segnali da ignorare SIGTERM
+        pthread_sigmask(SIG_SETMASK,&sigmask,NULL);           //aggiorno la maschera riattivando così la ricezione dei segnali SIGINT e SIGTERM
+        while(sigflag!=-1){                                   //finchè la variabile sigflag non è stata settata a -1 dall'handler dei segnali
+            if(pselect(fd_num+1,&rdset,NULL,NULL,NULL,&sigmask)!=-1){       //controllo se ci sono fd pronti alla lettura nel rdset di dimensione fd_num+1
+                for (int i=0;i<fd_num+1;i++){                               //passo a pselect sigmask perché voglio che pselect venga interrotta solo dai segnali SIGINT e SIGTERM
+                    if (FD_ISSET(i,&rdset)){                                //se il fd è settato a 1 in rdset
+                        if (i==welcomeSocket){                              //se è il welcomeSocket
+                            int fd_c=accept(welcomeSocket, NULL,0);         //accetto la connessione    
+                            FD_SET(fd_c,&set);                              //aggiungo il fd del client al set di fd
+                            if(fd_c>fd_num)                                 //aggiorno il fd MAX
                                 fd_num=fd_c;
-                        }else{
-                            int* client=malloc(sizeof(int));
-                            *client=i;
-                            push(q,client);
-                            FD_CLR(i,&set);
-                            fd_num=aggiornaMax(set,fd_num);
+                        }else{  
+                            int* client=(int*)malloc(sizeof(int));                //mi creo un riferimento al fd del client
+                            *client=i;                                                      
+                            push(q,client);                                       //lo pusho nella coda
+                            FD_CLR(i,&set);                                       //lo tolgo dal set perché da adesso in poi verrà gestito dal client
+                            fd_num=aggiornaMax(set,fd_num);      
                         }
                     }
                 }
             }
-            rdset=set;
+            rdset=set;                                             //aggiorno rdset
 	    }
-        sigfillset(&sigmask);
-        pthread_sigmask(SIG_SETMASK,&sigmask,NULL);
-        for(int i=0;i<n_workers;i++){
+        sigfillset(&sigmask);                                     //blocco TUTTI I SEGNALI
+        pthread_sigmask(SIG_SETMASK,&sigmask,NULL);               //aggiorno la maschera
+        for(int i=0;i<n_workers;i++){                             
             int* endWorkerSignal=(int*)malloc(sizeof(int));
-            *endWorkerSignal=-1;
-            push(q,endWorkerSignal);
+            *endWorkerSignal=-1;                                
+            push(q,endWorkerSignal);                              //inserisco dei -1 nella coda per segnalare ai workers di terminare l'esecuzione
         }
         for(int i=0;i<n_workers;i++){
-            pthread_join(threadArray[i],NULL);
+            pthread_join(threadArray[i],NULL);                   //eseguo la join
         }
-        pthread_mutex_destroy(&m);
-        deleteQueue(q);
-        unlink(path);
-        fclose(flog);
-        fclose(fin);
-        deleteFromConf(name_bib);
-        dumpRecord(file_name,head);
+        pthread_mutex_destroy(&m);                              //distruggo il mutex usato dai worker eper scrivere nel file di log
+        deleteQueue(q);                                         //elimino la coda
+        unlink(path);                                           //rimuovo il nome della socket del server dal file system
+        fclose(flog);                                           //chiudo il file di log                                    
+        deleteFromConf(name_bib);                               //cancello l'indizzo dal file di configurazione
+        dumpRecord(file_name,head);                             //faccio il dump della lista contenente i libri sul file record
     }else if(ferror(fin)){
         perror("Errore durante la lettura del file contentente i record\n");
     }  
@@ -139,24 +139,24 @@ int main(int argc, char* argv[]){
 }
 
 void dumpRecord(char* filename, Elem* head){
-    FILE* fin=fopen(filename,"w");
-    if(fin){
-        ftruncate(fileno(fin), 0);
+    FILE* fin=fopen(filename,"w");                                  //apto il file record in scrittura troncandolo
+    if(fin){    
+        ftruncate(fileno(fin), 0);                                  //pulisco il file di record
         char* record=(char*)malloc(SIZE);
         int offset;
         NodoAutore* nodeAuthor;
         Book_t* book;
-        while(head!=NULL){
+        while(head!=NULL){                          //finchè ci sono nodi nella lista di libri
             bool firstIteration=true;
             offset=0;
             book=head->val;
             nodeAuthor=book->autore;
-            while(nodeAuthor!=NULL){
-                if(nodeAuthor->val!=NULL){
-                    if(firstIteration){
+            while(nodeAuthor!=NULL){               //finchè ci sono nodi nella lista di autori    
+                if(nodeAuthor->val!=NULL){         //se il campo val non è NULL
+                    if(firstIteration){            
                         firstIteration=false;
                         offset +=sprintf(record,"autore: %s;",nodeAuthor->val);
-                    }else{
+                    }else{                          //se non è la prima iterazione includo lo spazio prima del nome del campo
                         offset +=sprintf(record+offset," autore: %s;",nodeAuthor->val);
                     }
                 }
@@ -192,16 +192,16 @@ void dumpRecord(char* filename, Elem* head){
             if(strcmp(book->prestito,"")!=0){
                 offset +=sprintf(record+offset," prestito: %s;",book->prestito);
             }
-            strcat(record,"\n");
+            strcat(record,"\n");        //aggiungo il char di fine riga
             offset++;
-            fwrite(record+strspn(record," "),1,offset,fin);
+            fwrite(record+strspn(record," "),1,offset,fin);         //scrivo il record nel file record
             Elem* tmp=head;
             head=head->next;
-            freeBook(tmp->val);
-            free(tmp);
-        }
-        free(record);
-        fclose(fin);
+            freeBook(tmp->val);                                     //dealloco il libro
+            free(tmp);                                              //dealloco il nodo della lista
+        }   
+        free(record);                                   
+        fclose(fin);                                                //chiudo il file
     }else if(ferror(fin)){
         perror("Errore durante la lettura del file contentente i record\n");
         exit(EXIT_FAILURE);
@@ -209,7 +209,7 @@ void dumpRecord(char* filename, Elem* head){
 }
 
 void deleteFromConf(char* name_bib){
-    FILE* fconf=fopen("bib.conf","r+");
+    FILE* fconf=fopen("bib.conf","r+");                         //apro il file di configurazione
     size_t size=N;
     char* riga=(char*)malloc(N);
     if(fconf==NULL){
@@ -219,30 +219,29 @@ void deleteFromConf(char* name_bib){
         int nchar=0;
         long pos_inizio = 0;
         long pos_fine = 0;
-        while((nchar=getline(&riga,&size,fconf))!=-1){
-            if(nchar != 1 && nchar != 0){
-                pos_inizio = pos_fine;
-                pos_fine = ftell(fconf);
-                if (strstr(riga, name_bib) != NULL) {
-                    
-                    fseek(fconf, pos_inizio, SEEK_SET);
+        while((nchar=getline(&riga,&size,fconf))!=-1){          //finchè non sono arrivato all fine del file
+            if(nchar != 1 && nchar != 0){                       //se non è una riga vuota o un carattere di nuova riga
+                pos_inizio = pos_fine;                          
+                pos_fine = ftell(fconf);                        //mi salvo la posizione di inzio riga
+                if (strstr(riga, name_bib) != NULL) {           //se la riga contiene la sottostringa contenente l'indirizzo 
+                    fseek(fconf, pos_inizio, SEEK_SET);         //imposto la posizione all'inizio della riga 
                     char tmp[strlen(riga)];
                     char tmpName[strlen(name_bib)];
-                    memset(tmpName,'X',strlen(name_bib));
+                    memset(tmpName,'X',strlen(name_bib));       
                     tmpName[strlen(name_bib)]='\0';
-                    sprintf(tmp,"BibName:%s,Sockpath:%s\n",tmpName,tmpName);
-                    fwrite(tmp, 1, strlen(riga), fconf);
-                    fseek(fconf, 0, SEEK_END);
+                    sprintf(tmp,"BibName:%s,Sockpath:%s\n",tmpName,tmpName);   //aggiungo la stringa XXXXXXXX 
+                    fwrite(tmp, 1, strlen(riga), fconf);                       //scrivo la riga
+                    fseek(fconf, 0, SEEK_END);                                 //vado alla fine del file così la getline si restituisce -1
                 }
                 memset(riga,0,N);
             }
         }
     }
-    fclose(fconf);
-    free(riga);
+    fclose(fconf);                                  //chiudo file record aggiornato
+    free(riga);                                         
 }
 
-void addBibToConf(char* name_bib){
+void addBibToConf(char* name_bib){          
     FILE* fconf=fopen("bib.conf","r+");
     size_t size=N;
     char* riga=(char*)malloc(N);
@@ -250,26 +249,26 @@ void addBibToConf(char* name_bib){
         perror("errore apertura file bib.conf\n");
         exit(EXIT_FAILURE);
     }else{
-        while(!feof(fconf)){
-            if((getline(&riga,&size,fconf))>1){
+        while(!feof(fconf)){                                //finché non sono alla fine del file
+            if((getline(&riga,&size,fconf))>1){             //finchè getline legge qualcosa
                 strtok(riga,",");
                 strtok(riga,":");
-                char* tok=strtok(NULL,":");
-                if(strcmp(tok,name_bib)==0){             
+                char* tok=strtok(NULL,":");                 //tokenizzo la riga letta dal file bib.conf
+                if(strcmp(tok,name_bib)==0){                //vedo se la riga contiene l'indirizzo del mio server, dunque se è già stato preso
                     perror("nome biblioteca già preso\n");
                     exit(EXIT_FAILURE);
                 }
                 memset(riga,0,N);
             }
         }
-        fprintf(fconf,"BibName:%s,Sockpath:%s\n",name_bib,name_bib);
+        fprintf(fconf,"BibName:%s,Sockpath:%s\n",name_bib,name_bib);        //aggiungo l'indirizzo del server a bib.conf
     }
     fclose(fconf);
     free(riga);
 }
 
 int aggiornaMax(fd_set set, int max ){
-	while(!FD_ISSET(max,&set)) max--;
+	while(!FD_ISSET(max,&set)) max--;              
     return max;
 }
 
@@ -278,31 +277,31 @@ bool equalAuthors(Book_t* book, Book_t* bookNode){
     NodoAutore* bookNodeAuthor=bookNode->autore;
     while(bookAuthor!=NULL){
         bool authorPresent=false;
-        while(bookNodeAuthor!=NULL){
-            if(strcmp(bookNodeAuthor->val, bookAuthor->val)==0){
-                authorPresent=true;
-                break;
+        while(bookNodeAuthor!=NULL){                                
+            if(strcmp(bookNodeAuthor->val, bookAuthor->val)==0){        //se l'autore corrente del libro è presente nella lista di autori del libro della lista
+                authorPresent=true;                                     //setto la flag
+                break;                                                  //interrompo il ciclo
             }
-            bookNodeAuthor=bookNodeAuthor->next;
+            bookNodeAuthor=bookNodeAuthor->next;                        //passo all'autore successivo
         }
-        if(authorPresent==false){
+        if(authorPresent==false){                              //se è false allora vuol dire che l'autore del libro corrente non è contenuto nel libro del nodo
             return false;
         }
-        bookAuthor=bookAuthor->next;
-        bookNodeAuthor=bookNode->autore;
+        bookAuthor=bookAuthor->next;              //passo all'autore successivo del libro corrente e scorro di nuovo tutta la lista degli autori del libro nel lista del server
+        bookNodeAuthor=bookNode->autore;          //resetto il puntantore della lista degli autori alla testa
     }
     return true;
 }
 
-bool isPresent(Book_t* book, Elem* head){
+bool isPresent(Book_t* book, Elem* head){           
     Elem* currElem=head;
     bool result=false;
-    while(currElem!=NULL){
-        if(matchBook(book,currElem->val)){
-            Book_t* bookNode=currElem->val;
-            if(bookNode->titolo==NULL){
-                if(book->titolo!=NULL){
-                    bookNode->titolo=(char*)malloc(strlen(book->titolo)+1);
+    while(currElem!=NULL){                                  //finchè il nodo della lista non è NULL 
+        if(matchBook(book,currElem->val)){                  //se c'è un match tra il libro che devo inserire e il libro nel nodo corrente
+            Book_t* bookNode=currElem->val;                 //se sono uguali allora procedo ad arricchire il libro nel nodo con i campi del libro che volevo inserire
+            if(bookNode->titolo==NULL){                     //se il libro presente nella lista non ha un titolo
+                if(book->titolo!=NULL){                     //se il libro che voglio inserire ha un titolo
+                    bookNode->titolo=(char*)malloc(strlen(book->titolo)+1);         //copio il titolo nel libro nella lista
                     strcpy(bookNode->titolo,book->titolo);
                 }
             }
@@ -366,47 +365,46 @@ bool isPresent(Book_t* book, Elem* head){
 
 void* worker(void* args){
     Queue_t* q=((arg_t*)args)->q;
-    Elem* head=((arg_t*)args)->list;
+    Elem* head=((arg_t*)args)->list;                        //leggo e mi salvo i riferimenti agli oggetti di threadArgs
     pthread_mutex_t* m=((arg_t*)args)->mutex;
     FILE* flog=((arg_t*)args)->flog;
-	while(sigflag!=-1){
+	while(sigflag!=-1){                                     //finchè sigflag non è stata settata dall'arrivo di un segnale SIGINT o SIGTERM
         int* ftemp=(int*)pop(q);
         int fd=*ftemp;
-        free(ftemp);
-        if(fd!=-1){
-            Elem* node=head;
+        free(ftemp);                                        //mi salvo il file descriptor e dealloco
+        if(fd!=-1){                                         //se è "-1" allora il main thread vuole terminare i worker
+            Elem* node=head;                                
             unsigned int length;
             char type;
-            read(fd,&type,1);
-            read(fd,&length,sizeof(unsigned int));
+            read(fd,&type,1);                               //leggo il type del msg
+            read(fd,&length,sizeof(unsigned int));          //leggo la lunghezza del msg
             char* buff = (char*)malloc(length);
-            read(fd,buff,length);
-            Book_t* book=(Book_t*)malloc(sizeof(Book_t)); 
-            memset(book, 0, sizeof(Book_t));
-            recordToBook(buff,book);
-            bool noMatches;
-            bool error;
+            read(fd,buff,length);                           //leggo il campo data del msg
+            Book_t* book=(Book_t*)malloc(sizeof(Book_t));   //creo un libro 
+            memset(book, 0, sizeof(Book_t));                //azzero tutti i campi così se non li inizializzo hanno un valore nullo invece di randomico
+            recordToBook(buff,book);                        //converto il campo data mandato dal client in un libro con quelle caratteristiche
+            bool noMatches;                                 //flag che mi serve per sapere se la ricerca ha prodotto match con libri nella biblioteca
+            bool error;                                     //flag che mi serve per capire se tutti libri che il cliente vuole prendere in prestito non è disponibile
             int queryCount=0;
             switch(type){
-                case MSG_QUERY:
-                    noMatches=true;
-                    while(node!=NULL){
-                        if(matchBook(book,node->val)){
+                case MSG_QUERY:                             //se type è "Q"
+                    noMatches=true;                         //inizializzo noMatches
+                    while(node!=NULL){                      //scorro la lista
+                        if(matchBook(book,node->val)){      //prendo il valore del nodo corrente e lo confronto con il libro creato dalla query del client 
                             buff=(char*)realloc(buff,SIZE);
-                            memset(buff,0,SIZE);
-                            bookToRecord(node->val,buff);
-                            noMatches=false;
-                            write(fd,"R",1);
-                            unsigned int dataLength=strlen(buff);
-                            write(fd,&dataLength,sizeof(unsigned int)); 
-                            write(fd,buff,dataLength);
-                            strcat(buff,"\n");
-                            pthread_mutex_lock(m);
-                            fwrite(buff,1,strlen(buff),flog);
-                            pthread_mutex_unlock(m);
-                            queryCount++;
+                            memset(buff,0,SIZE);            //se c'è stato un match, ovvero il libro del nodo contiene valori uguali a quelli specificati dal client
+                            noMatches=false;                //allora converto il libro in riga testuale e setto la flag noMatches
+                            write(fd,"R",1);                //scrivo al client il tipo del msg
+                            unsigned int dataLength=bookToRecord(node->val,buff);;   
+                            write(fd,&dataLength,sizeof(unsigned int));     //scrivo al client la lunghezza del record 
+                            write(fd,buff,dataLength);                      //scrivo al client il record
+                            strcat(buff,"\n");  
+                            pthread_mutex_lock(m);                          //il thread corrente cerca di acquisire la mutex 
+                            fwrite(buff,1,strlen(buff),flog);               //scrive il record nel file di log
+                            pthread_mutex_unlock(m);                        //rilascia la mutex
+                            queryCount++;                                   //incrementa il conteggio delle query restituite 
                         }
-                        if(node->next!=NULL){
+                        if(node->next!=NULL){                               //passa al nodo successivo della lista
                             if(node->next->val!=NULL){
                                 node=node->next;
                             }
@@ -415,44 +413,43 @@ void* worker(void* args){
                         }
                     }
                     break;
-
-                case MSG_LOAN:
+                case MSG_LOAN:                              //se type è "L"
                     noMatches=true;
-                    error=true;
+                    error=true;                             //inizializzo la flag error (nessun libro disponibile al prestito)
                     while(node!=NULL){
                         if(matchBook(book,node->val)){
                             noMatches=false;
-                            struct tm loanTime;
+                            struct tm loanTime;                                     //loanTime contiene le informazioni sul tempo del prestito 
                             bool available=false;
                             time_t timestamp = time(NULL);
-                            struct tm* currentTime = localtime(&timestamp);
-                            if(strcmp(node->val->prestito,"")!=0){
+                            struct tm* currentTime = localtime(&timestamp);         //currentTime contiene le informazioni sul tempo corrente
+                            if(strcmp(node->val->prestito,"")!=0){                  //il campo prestito del libro della lista NON è null
                                 char date[strlen(node->val->prestito)];
                                 strcpy(date,node->val->prestito);
                                 char* tokDMY=strtok(date," ");  //DMY = Day Month Year
                                 char* tokSMH=strtok(NULL," ");      //SMH = Seconds Minutes Hours
                                 
-                                loanTime.tm_mday=atoi(strtok(tokDMY,"-"));
+                                loanTime.tm_mday=atoi(strtok(tokDMY,"-"));          //aggiungo le informazioni sulla data nella struct loanTime
                                 loanTime.tm_mon=atoi(strtok(NULL,"-")-1);
                                 loanTime.tm_year=atoi(strtok(NULL,"-"))-1900;
 
                                 loanTime.tm_hour=atoi(strtok(tokSMH,":"));
                                 loanTime.tm_min=atoi(strtok(NULL,":"));
                                 loanTime.tm_sec=atoi(strtok(NULL,":"));
-                                
+                                                                                        //confronto le due struct
                                 if(difftime(mktime(currentTime),mktime(&loanTime))>0){  //data di scadenza (loanTime) è passata
                                     available=true;
                                 }
-                            }else{
+                            }else{                              //se prestito di node->val è NULL allora il libro è disponibile
                                 available=true;    
                             }
                             if(available){
-                                error=false;
+                                error=false;                    //set error false
                                 memset(node->val->prestito, 0, sizeof(node->val->prestito));
 
                                 int offset = 0;  // Inizializza l'offset a 0
 
-                                if(currentTime->tm_mday<10){
+                                if(currentTime->tm_mday<10){                    //aggiorno il campo prestito del libro nella lista
                                     offset += sprintf(node->val->prestito + offset, "%d", 0);
                                 }
                                 offset += sprintf(node->val->prestito + offset, "%d", currentTime->tm_mday);
@@ -481,18 +478,18 @@ void* worker(void* args){
 
                                 buff=(char*)realloc(buff,SIZE);
                                 memset(buff,0,SIZE);
-                                unsigned int dataLength=bookToRecord(node->val,buff);
-                                write(fd,"R",1);
-                                write(fd,&dataLength,sizeof(unsigned int)); 
-                                write(fd,buff,dataLength);
+                                unsigned int dataLength=bookToRecord(node->val,buff);   //converto il libro in stringa e mi faccio restituire la lunghezza
+                                write(fd,"R",1);                                        //invio il type del msg
+                                write(fd,&dataLength,sizeof(unsigned int));             //invio la lunghezza del msg
+                                write(fd,buff,dataLength);                              //invio il campo data del msg
                                 strcat(buff,"\n");
-                                pthread_mutex_lock(m);
-                                fwrite(buff,1,strlen(buff),flog);
-                                pthread_mutex_unlock(m);
-                                queryCount++;
+                                pthread_mutex_lock(m);                                  //acquisisco la mutex per scrivere nel file log
+                                fwrite(buff,1,strlen(buff),flog);                       //scrivo il record
+                                pthread_mutex_unlock(m);                                //rilascio la mutex
+                                queryCount++;                                           //aumento il numero di riscontri 
                             }                        
                         }
-                        if(node->next!=NULL){
+                        if(node->next!=NULL){                                           //passo al nodo successivo
                             if(node->next->val!=NULL){
                                 node=node->next;
                             }
@@ -504,43 +501,43 @@ void* worker(void* args){
                 default:
                     break;
             }
-            if(noMatches){
-                error=false;
+            if(noMatches){                          //se non è stata settata la flag noMatches allora non ci sono stati riscontri
+                error=false;                        //non voglio entrare nel if successivo
                 unsigned int zero=0;
-                write(fd,"N",1);
-                write(fd,&zero,sizeof(zero));
+                write(fd,"N",1);                    //invio il type "N" al client
+                write(fd,&zero,sizeof(zero));       //invio l'intero 0
             }
-            if(error){
-                write(fd,"E",1);
-                char errorMsg[] = "Errore, nessun libro disponibile";
-                unsigned int msg_lenght = strlen(errorMsg)+1;
-                write(fd,&msg_lenght,sizeof(unsigned int));
-                write(fd,errorMsg,msg_lenght);
+            if(error){                              //il client ha provato a richieder un loan ma nessun libro era disponibile oppure il libro non esiste
+                write(fd,"E",1);                    //invio il type "E" al client
+                char errorMsg[] = "Errore, nessun libro disponibile";       //data
+                unsigned int msg_lenght = strlen(errorMsg)+1;       
+                write(fd,&msg_lenght,sizeof(unsigned int));             //invio la dimensione della stringa di errore
+                write(fd,errorMsg,msg_lenght);                          //invio la stringa di errore
             }
             char str[20];
-            if(type=='L'){
+            if(type=='L'){      
                 sprintf(str, "LOAN %u\n",queryCount);
-            }else{
+            }else{                                                      //preparo la stringa da scrivere nel file di log
                 sprintf(str, "QUERY %u\n",queryCount);
             }
-            pthread_mutex_lock(m);
-            fwrite(str,1,strlen(str),flog);
-            pthread_mutex_unlock(m);
-            close(fd);
-            freeBook(book);
-            free(buff);
+            pthread_mutex_lock(m);                                      //acquisisco la mutex
+            fwrite(str,1,strlen(str),flog);                             //scrivo nel file log
+            pthread_mutex_unlock(m);                                    //rilascio la mutex
+            close(fd);                                                  //chiudo il file descriptor del client ovvero la sua socket
+            freeBook(book);                                             //dealloco il libro
+            free(buff);             
         }
-	}
-    pthread_exit(NULL);
+	}   
+    pthread_exit(NULL);                                                 //termino il thread con la funzione apposita
 }
 
 Book_t* recordToBook(char* riga, Book_t* book){
-    int n_attributes=countAttributes(riga);
-    char* field[n_attributes];
-    char* str=strtok(riga,";");
-    field[0]=(char*)malloc(strlen(str)+1);
-    strcpy(field[0],str);
-    for(int i=1;i<n_attributes;i++){
+    int n_attributes=countAttributes(riga);                 //conto il numero di campi del record
+    char* field[n_attributes];                              //creo un array di stringhe
+    char* str=strtok(riga,";");                             //puntatore al primo campo
+    field[0]=(char*)malloc(strlen(str)+1);                  
+    strcpy(field[0],str);                                   //salvo il primo campo    esempio:  "autore: Giovanni" 
+    for(int i=1;i<n_attributes;i++){                        //itero per tutti i campi
         str = strtok(NULL,";");
         field[i]=(char*)malloc(strlen(str)+1);
         strcpy(field[i],str);
@@ -548,20 +545,20 @@ Book_t* recordToBook(char* riga, Book_t* book){
     int n_autori=0;
     NodoAutore* previousAuthor;
     bool firstIteration=true;
-    for(int i=0;i<n_attributes;i++){
-        char* subfield=strchr(field[i],':')+1+strspn(strchr(field[i],':')+1, " ");
+    for(int i=0;i<n_attributes;i++){                        //itero per tutti i campi
+        char* subfield=strchr(field[i],':')+1+strspn(strchr(field[i],':')+1, " ");  
         if(strcmp(subfield,"")!=0){ //sporco key perché tanto il campo è vuoto
             int key_length = strchr(field[i],':') - field[i] - strspn(field[i], " ");
             char key[key_length + 1];
             strncpy(key, field[i] + strspn(field[i], " "), key_length);
             key[key_length] = '\0'; 
-            while(key[key_length-1]==' '){
+            while(key[key_length-1]==' '){                  //conto il numero di spazi in fondo alla stringa del nome del campo
                 key_length--;
             } 
             strncpy(key, field[i]+strspn(field[i], " "), key_length);  
             key[key_length]='\0';   
             int value_length=strlen(subfield);
-            while(subfield[value_length-1]==' '){
+            while(subfield[value_length-1]==' '){           //conto il numero di spazi in fondo alla stringa del valore del campo
                 value_length--;
             }
             char value[value_length+1];
@@ -577,7 +574,7 @@ Book_t* recordToBook(char* riga, Book_t* book){
             strncat(formatted_value,tokvalue+strspn(tokvalue," "),toklength-strspn(tokvalue," "));
             char* precTok=(char*)malloc(strlen(tokvalue)+1);
             strcpy(precTok,tokvalue);
-            while((tokvalue=strtok(NULL,","))!=NULL){
+            while((tokvalue=strtok(NULL,","))!=NULL){               //gestione del caso in cui il valore del campo è "  Marco   ,    giallini   "
                 toklength=strlen(tokvalue);
                 while(tokvalue[toklength-1]==' '){
                     toklength--;
@@ -593,25 +590,25 @@ Book_t* recordToBook(char* riga, Book_t* book){
                 strncat(formatted_value,tokvalue,toklength);
                 precTok=(char*)realloc(precTok,toklength+1);
                 strcpy(precTok,tokvalue);
-            }
+            }                                                   //"  autore  :  Mirco  ,   Angeli  ;"   -------> key="autore"  formatted_value="Mirco, Angeli"
             free(precTok);
-            if(strcmp(key,"autore") == 0){
-                NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));
+            if(strcmp(key,"autore") == 0){                      //il nome del campo corrisponde a "autore"
+                NodoAutore* currentAuthor=(NodoAutore*)malloc(sizeof(NodoAutore));          //creo un nodoAutore
                 memset(currentAuthor, 0, sizeof(NodoAutore));
-                currentAuthor->val=(char*)malloc(strlen(formatted_value)+1);
-                strcpy(currentAuthor->val,formatted_value);
+                currentAuthor->val=(char*)malloc(strlen(formatted_value)+1);            
+                strcpy(currentAuthor->val,formatted_value);                                 //salvo il nome dell'autore nel campo val del nodo
                 if(firstIteration){
-                    previousAuthor=currentAuthor;
-                    book->autore=currentAuthor;
+                    previousAuthor=currentAuthor;                    //il riferimento al nodo precendente è quello attuale (ci serve per la prossima iterazione)
+                    book->autore=currentAuthor;                      //il campo autore contiene un riferimento al nodo della lista di autori
                     firstIteration=false;
                 }else{
-                    previousAuthor->next=currentAuthor;
-                    previousAuthor=currentAuthor;
-                }
-                n_autori++;
-            }else if(strcmp(key,"titolo") == 0){
+                    previousAuthor->next=currentAuthor;              //il nodo precendente punta a quello attuale
+                    previousAuthor=currentAuthor;                    //il nodo attuale diventa il nodo precendente per l'iterazione successiva
+                }                                                    //facciamo questo perché vogliamo aggiungere in coda
+                n_autori++;                                          //incremento il numero di autori nella lista
+            }else if(strcmp(key,"titolo") == 0){                     
                 book->titolo=(char*)malloc(strlen(formatted_value)+1);
-                strcpy(book->titolo,formatted_value);
+                strcpy(book->titolo,formatted_value);               //se key="titolo" allora copio il valore del titolo nel campo della struct libro
             }else if(strcmp(key,"editore") == 0){
                 book->editore=(char*)malloc(strlen(formatted_value)+1);
                 strcpy(book->editore,formatted_value);
@@ -641,18 +638,18 @@ Book_t* recordToBook(char* riga, Book_t* book){
         }
     }
     for (int i = 0; i < n_attributes; i++) {
-        free(field[i]);
+        free(field[i]);                         //faccio la free dell'array di stringhe contente i campi del record
     }
-    return book;
+    return book;                                //restituisco il puntatore al libro
 }
 
-bool matchBook(Book_t* book, Book_t* bookNode){
+bool matchBook(Book_t* book, Book_t* bookNode){         //verifico se due libri contengono gli stessi valori nei campi non nulli
     int match=0;
     int bookFieldNum=0;
-    if(book->autore!=NULL){
+    if(book->autore!=NULL){                             //il campo autore non è nullo
         bookFieldNum++;
-        if(bookNode->autore!=NULL){
-            if(equalAuthors(book,bookNode)){
+        if(bookNode->autore!=NULL){                     //il campo autore non è nullo
+            if(equalAuthors(book,bookNode)){            //hanno gli stessi autori
                 match++;
             }
         }
@@ -660,7 +657,7 @@ bool matchBook(Book_t* book, Book_t* bookNode){
     if(book->titolo!=NULL){
         bookFieldNum++;
         if(bookNode->titolo!=NULL){
-            if(strcmp(bookNode->titolo,book->titolo)==0){
+            if(strcmp(bookNode->titolo,book->titolo)==0){       //confronto le stringhe dei titoli
                 match++;
             } 
         }         
@@ -729,16 +726,16 @@ bool matchBook(Book_t* book, Book_t* bookNode){
             } 
         }         
     }
-    if(bookFieldNum>match){
-        return false;
-    }else{
-        return true;
+    if(bookFieldNum>match){     //se non ci sono stati tanti match quanto il numero di campi non nulli
+        return false;           //es: bibclient --titolo="Harry Potter" --anno="1997" 
+    }else{                      //se bookNode->titolo=NULL  bookNode->anno=1997  ------> bookFieldNum=2  MATCH=1
+        return true;           
     }
 }
 
-int countAttributes(char* riga){
+int countAttributes(char* riga){            //conto i campi della riga
     int count=0;
-    for(int i=0;i<strlen(riga);i++){
+    for(int i=0;i<strlen(riga);i++){        
         if(riga[i]==';'){
             count++;
         }
@@ -746,6 +743,6 @@ int countAttributes(char* riga){
     return count;
 }
 
-static void gestore (int signum) {
-    sigflag=-1;
+static void gestore (int signum) {      //handler SIGINT/SIGTERM
+    sigflag=-1;                         //imposto la sigflag per segnalare che è arrivata una signal di SIGINT o SIGTERM
 }

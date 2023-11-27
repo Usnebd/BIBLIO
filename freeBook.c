@@ -1,6 +1,6 @@
 #include"structures.h"
 
-void freeBook(Book_t* book){
+void freeBook(Book_t* book){            //prende un libro e fa la free di tutti i campi
     if(book->autore!=NULL){
         NodoAutore* currAuthor=book->autore;
         while(currAuthor!=NULL){

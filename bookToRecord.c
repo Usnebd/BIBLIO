@@ -1,8 +1,8 @@
 #include<string.h>
 #include"structures.h"
 
-int bookToRecord(Book_t* book, char* data){
-    bool notFirstIteration=false;
+int bookToRecord(Book_t* book, char* data){     //prende il riferimento ad un libro e una stringa vuota dove salvare il risultato
+    bool notFirstIteration=false;             
     NodoAutore* nodeAuthor=book->autore;
     if(nodeAuthor!=NULL){
         if(nodeAuthor->val!=NULL){
@@ -20,13 +20,13 @@ int bookToRecord(Book_t* book, char* data){
             }
         }
     }
-    if((book->titolo)!=NULL){
+    if((book->titolo)!=NULL){               //se il campo titolo non è nullo
         if(notFirstIteration==true){
             strcat(data," ");
         }else{
             notFirstIteration=true;
         }
-        strcat(data,"titolo: ");
+        strcat(data,"titolo: ");            //aggiungo alla stringa
         strcat(data,book->titolo);
         strcat(data, ";");
     }
@@ -118,5 +118,5 @@ int bookToRecord(Book_t* book, char* data){
         strcat(data,book->prestito);
         strcat(data, ";");
     }
-    return strlen(data);
+    return strlen(data);        //restituisco la lunghezza della stringa
 }
