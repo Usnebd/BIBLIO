@@ -71,7 +71,7 @@ int main(int argc, char* argv[]){
         int nchar;
         while((nchar=getline(&riga,&size,fconf))!=-1){      //scorro le righe del file contententi gli indirizzia ai vari server
             if(nchar!=0 && nchar!=1){
-            emptyConf=false;
+                emptyConf=false;
                 strtok(riga,",");
                 strtok(riga,":");
                 sockname=strtok(NULL,":");
@@ -124,7 +124,7 @@ int main(int argc, char* argv[]){
         free(riga);
         free(message);
         if(emptyConf){                      //se il file bib.conf è vuoto
-            perror("bib.conf è vuoto\n");
+            printf("bib.conf è vuoto\n");
         }
     fclose(fconf);                          //chiudo il file bib.conf
     freeBook(bookQuery);                    //dealloco il libro
