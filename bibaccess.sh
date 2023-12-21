@@ -26,7 +26,7 @@ echo
 for file in "$@"; do
     sum=0
     # Ignora l'opzione e i file relativi                      #verifica se la variabile file non corrisponde all'espressione regolare ^--
-    if [[ "$file" != "$option" && ! "$file" =~ ^-- ]]; then   # =~ è utilizzato per confrontare una stringa con un'espressione regolare
+    if [[ "$file" != "$option" ]]; then   # =~ è utilizzato per confrontare una stringa con un'espressione regolare
         while IFS= read -r line || [ -n "$line" ]; do         #IFS= Imposta il separatore di campo interno a nulla
             if [[ "$line" == "$upcaseOption"* ]]; then        #read -r line: Legge una riga dal file e assegna il valore alla variabile line
                 number=${line##* }                            #Verifica se la variabile line inizia con il valore di upcaseOption

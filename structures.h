@@ -12,6 +12,8 @@
 #include<sys/types.h>
 #include<sys/select.h>
 #include "unboundedqueue.h"
+#define checkSyscall(s) if ( (s) == -1 ) {perror("Errore SYSCALL\n"); exit(EXIT_FAILURE);}
+#define checkFerror(f) if ( ferror(f) ) {perror("Errore I/O su file\n"); exit(EXIT_FAILURE);}
 
 struct
 {

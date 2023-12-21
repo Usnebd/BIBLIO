@@ -59,10 +59,7 @@ int main(int argc, char* argv[]){
         sprintf(path,"./%s",name_bib);
         sprintf(logName,"%s.log",name_bib);
         FILE* flog=fopen(logName,"w");                              //apro in scrittura il file di log
-        if(ferror(flog)){                                           //se ci sono errori all'apertura esco
-            perror("Errore durante la lettura del file di log\n");
-            exit(EXIT_FAILURE);
-        }
+        checkFerror(flog);                                          //controllo errori
         struct sockaddr_un sa_server;
         unlink(path);                                               //se c'è una soscket o file con lo stesso nome di path lo rimuovo
         strncpy(sa_server.sun_path,path,UNIX_PATH_MAX);             //copio il path sulla struct
@@ -131,8 +128,8 @@ int main(int argc, char* argv[]){
         fclose(flog);                                           //chiudo il file di log                                    
         deleteFromConf(name_bib);                               //cancello l'indizzo dal file di configurazione
         dumpRecord(file_name,head);                             //faccio il dump della lista contenente i libri sul file record
-    }else if(ferror(fin)){
-        perror("Errore durante la lettura del file contentente i record\n");
+    }else{
+        checkFerror(fin);
     }  
     printf("\nTerminazione server: %s\n",name_bib);
     return 0;
@@ -195,6 +192,7 @@ void dumpRecord(char* filename, Elem* head){
             strcat(record,"\n");        //aggiungo il char di fine riga
             offset++;
             fwrite(record+strspn(record," "),1,offset,fin);         //scrivo il record nel file record
+            checkFerror(fin);
             Elem* tmp=head;
             head=head->next;
             freeBook(tmp->val);                                     //dealloco il libro
@@ -202,20 +200,16 @@ void dumpRecord(char* filename, Elem* head){
         }   
         free(record);                                   
         fclose(fin);                                                //chiudo il file
-    }else if(ferror(fin)){
-        perror("Errore durante la lettura del file contentente i record\n");
-        exit(EXIT_FAILURE);
-    }  
+    }else{
+        checkFerror(fin);
+    }
 }
 
 void deleteFromConf(char* name_bib){
     FILE* fconf=fopen("bib.conf","r+");                         //apro il file di configurazione
     size_t size=N;
     char* riga=(char*)malloc(N);
-    if(fconf==NULL){
-        perror("errore apertura file bib.conf\n");
-        exit(EXIT_FAILURE);
-    }else{
+    if(fconf){
         int nchar=0;
         long pos_inizio = 0;
         long pos_fine = 0;
@@ -231,11 +225,15 @@ void deleteFromConf(char* name_bib){
                     tmpName[strlen(name_bib)]='\0';
                     sprintf(tmp,"BibName:%s,Sockpath:%s\n",tmpName,tmpName);   //aggiungo la stringa XXXXXXXX 
                     fwrite(tmp, 1, strlen(riga), fconf);                       //scrivo la riga
+                    checkFerror(fconf);
                     fseek(fconf, 0, SEEK_END);                                 //vado alla fine del file così la getline si restituisce -1
                 }
                 memset(riga,0,N);
             }
         }
+    }else{
+        free(riga);
+        checkFerror(fconf);
     }
     fclose(fconf);                                  //chiudo file record aggiornato
     free(riga);                                         
@@ -245,10 +243,7 @@ void addBibToConf(char* name_bib){
     FILE* fconf=fopen("bib.conf","r+");
     size_t size=N;
     char* riga=(char*)malloc(N);
-    if(fconf==NULL){
-        perror("errore apertura file bib.conf\n");
-        exit(EXIT_FAILURE);
-    }else{
+    if(fconf){
         while(!feof(fconf)){                                //finché non sono alla fine del file
             if((getline(&riga,&size,fconf))>1){             //finchè getline legge qualcosa
                 strtok(riga,",");
@@ -262,6 +257,10 @@ void addBibToConf(char* name_bib){
             }
         }
         fprintf(fconf,"BibName:%s,Sockpath:%s\n",name_bib,name_bib);        //aggiungo l'indirizzo del server a bib.conf
+    }else if(ferror(fconf)){
+        free(riga);
+        perror("errore apertura file bib.conf\n");
+        exit(EXIT_FAILURE);
     }
     fclose(fconf);
     free(riga);
@@ -376,10 +375,10 @@ void* worker(void* args){
             Elem* node=head;                                
             unsigned int length;
             char type;
-            read(fd,&type,1);                               //leggo il type del msg
-            read(fd,&length,sizeof(unsigned int));          //leggo la lunghezza del msg
+            checkSyscall(read(fd,&type,1));                               //leggo il type del msg
+            checkSyscall(read(fd,&length,sizeof(unsigned int)));          //leggo la lunghezza del msg
             char* buff = (char*)malloc(length);
-            read(fd,buff,length);                           //leggo il campo data del msg
+            checkSyscall(read(fd,buff,length));                           //leggo il campo data del msg
             Book_t* book=(Book_t*)malloc(sizeof(Book_t));   //creo un libro 
             memset(book, 0, sizeof(Book_t));                //azzero tutti i campi così se non li inizializzo hanno un valore nullo invece di randomico
             recordToBook(buff,book);                        //converto il campo data mandato dal client in un libro con quelle caratteristiche
@@ -394,13 +393,14 @@ void* worker(void* args){
                             buff=(char*)realloc(buff,SIZE);
                             memset(buff,0,SIZE);            //se c'è stato un match, ovvero il libro del nodo contiene valori uguali a quelli specificati dal client
                             noMatches=false;                //allora converto il libro in riga testuale e setto la flag noMatches
-                            write(fd,"R",1);                //scrivo al client il tipo del msg
-                            unsigned int dataLength=bookToRecord(node->val,buff);;   
-                            write(fd,&dataLength,sizeof(unsigned int));     //scrivo al client la lunghezza del record 
-                            write(fd,buff,dataLength);                      //scrivo al client il record
+                            checkSyscall(write(fd,"R",1));  //scrivo al client il tipo del msg
+                            unsigned int dataLength=bookToRecord(node->val,buff);
+                            checkSyscall(write(fd,&dataLength,sizeof(unsigned int)));     //scrivo al client la lunghezza del record 
+                            checkSyscall(write(fd,buff,dataLength));                      //scrivo al client il record
                             strcat(buff,"\n");  
                             pthread_mutex_lock(m);                          //il thread corrente cerca di acquisire la mutex 
                             fwrite(buff,1,strlen(buff),flog);               //scrive il record nel file di log
+                            checkFerror(flog);
                             pthread_mutex_unlock(m);                        //rilascia la mutex
                             queryCount++;                                   //incrementa il conteggio delle query restituite 
                         }
@@ -479,12 +479,13 @@ void* worker(void* args){
                                 buff=(char*)realloc(buff,SIZE);
                                 memset(buff,0,SIZE);
                                 unsigned int dataLength=bookToRecord(node->val,buff);   //converto il libro in stringa e mi faccio restituire la lunghezza
-                                write(fd,"R",1);                                        //invio il type del msg
-                                write(fd,&dataLength,sizeof(unsigned int));             //invio la lunghezza del msg
-                                write(fd,buff,dataLength);                              //invio il campo data del msg
+                                checkSyscall(write(fd,"R",1));                                        //invio il type del msg
+                                checkSyscall(write(fd,&dataLength,sizeof(unsigned int)));             //invio la lunghezza del msg
+                                checkSyscall(write(fd,buff,dataLength));                              //invio il campo data del msg
                                 strcat(buff,"\n");
                                 pthread_mutex_lock(m);                                  //acquisisco la mutex per scrivere nel file log
                                 fwrite(buff,1,strlen(buff),flog);                       //scrivo il record
+                                checkFerror(flog);
                                 pthread_mutex_unlock(m);                                //rilascio la mutex
                                 queryCount++;                                           //aumento il numero di riscontri 
                             }                        
@@ -504,15 +505,15 @@ void* worker(void* args){
             if(noMatches){                          //se non è stata settata la flag noMatches allora non ci sono stati riscontri
                 error=false;                        //non voglio entrare nel if successivo
                 unsigned int zero=0;
-                write(fd,"N",1);                    //invio il type "N" al client
-                write(fd,&zero,sizeof(zero));       //invio l'intero 0
+                checkSyscall(write(fd,"N",1));                    //invio il type "N" al client
+                checkSyscall(write(fd,&zero,sizeof(zero)));       //invio l'intero 0
             }
             if(error){                              //il client ha provato a richieder un loan ma nessun libro era disponibile oppure il libro non esiste
-                write(fd,"E",1);                    //invio il type "E" al client
+                checkSyscall(write(fd,"E",1));                    //invio il type "E" al client
                 char errorMsg[] = "Errore, nessun libro disponibile";       //data
                 unsigned int msg_lenght = strlen(errorMsg)+1;       
-                write(fd,&msg_lenght,sizeof(unsigned int));             //invio la dimensione della stringa di errore
-                write(fd,errorMsg,msg_lenght);                          //invio la stringa di errore
+                checkSyscall(write(fd,&msg_lenght,sizeof(unsigned int)));             //invio la dimensione della stringa di errore
+                checkSyscall(write(fd,errorMsg,msg_lenght));                          //invio la stringa di errore
             }
             char str[20];
             if(type=='L'){      
@@ -522,6 +523,7 @@ void* worker(void* args){
             }
             pthread_mutex_lock(m);                                      //acquisisco la mutex
             fwrite(str,1,strlen(str),flog);                             //scrivo nel file log
+            checkFerror(flog);
             pthread_mutex_unlock(m);                                    //rilascio la mutex
             close(fd);                                                  //chiudo il file descriptor del client ovvero la sua socket
             freeBook(book);                                             //dealloco il libro

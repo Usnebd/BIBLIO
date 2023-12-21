@@ -86,28 +86,28 @@ int main(int argc, char* argv[]){
                             sleep(1);                                                          //attendi
                         }else {exit(EXIT_FAILURE);}
                     }
-                    write(serverSocket, message, 1+sizeof(unsigned int)+messagelength);        //scrivo l'intero messaggio
+                    checkSyscall(write(serverSocket, message, 1+sizeof(unsigned int)+messagelength));        //scrivo l'intero messaggio
                     //fa una write unica che contiente tutto
                     char* data=(char*)malloc(BUFFSIZE);
                     unsigned int length;
                     while(read(serverSocket,data,1)){       //leggo il primo byte della risposta del server
                         switch (*data){
                             case MSG_NO:                    //type="N"
-                                read(serverSocket,&length,sizeof(unsigned int));
+                                checkSyscall(read(serverSocket,&length,sizeof(unsigned int)));
                                 length=1;
                                 printf("\n%s: MSG_NO\n",sockname);      //se name_bib=Alessandria -----> "Alessandria: MSG_NO"
                                 break;
                             case MSG_ERROR:                 //type="E"
-                                read(serverSocket,&length,sizeof(unsigned int));        //leggo la lunghezza del messaggio
+                                checkSyscall(read(serverSocket,&length,sizeof(unsigned int)));        //leggo la lunghezza del messaggio
                                 data=(char*)realloc(data,length);                       //rialloco il buffer data per fittare data
-                                read(serverSocket,data,length);                         //leggo data
+                                checkSyscall(read(serverSocket,data,length));                         //leggo data
                                 printf("\n%s: MSG_ERROR\n",sockname);                  
                                 printf("%s\n",data);                                    //stampo il messaggio di errore ricevuto
                                 break;
                             case MSG_RECORD:                //type="R"
-                                read(serverSocket,&length,sizeof(unsigned int));        //leggo la lunghezza del messaggio
+                                checkSyscall(read(serverSocket,&length,sizeof(unsigned int)));        //leggo la lunghezza del messaggio
                                 data=(char*)realloc(data,length);           
-                                read(serverSocket,data,length);                         //leggo il record 
+                                checkSyscall(read(serverSocket,data,length));                         //leggo il record 
                                 printf("\n%s: MSG_RECORD\n",sockname);
                                 printf("%s\n",data);                                    //stampo il record
                                 break;
@@ -129,8 +129,7 @@ int main(int argc, char* argv[]){
     fclose(fconf);                          //chiudo il file bib.conf
     freeBook(bookQuery);                    //dealloco il libro
     }else{
-        perror("Errore apertura file\n");
-        exit(EXIT_FAILURE);
+        checkFerror(fconf);
     }
     exit(EXIT_SUCCESS);
 }
