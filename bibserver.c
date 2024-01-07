@@ -1,4 +1,4 @@
-#include"bibserver.h"
+#include "bibserver.h"
 #define SIZE 1024
 #define UNIX_PATH_MAX 80
 #define N 100
@@ -64,9 +64,10 @@ int main(int argc, char* argv[]){
         unlink(path);                                               //se c'è una soscket o file con lo stesso nome di path lo rimuovo
         strncpy(sa_server.sun_path,path,UNIX_PATH_MAX);             //copio il path sulla struct
         sa_server.sun_family=AF_UNIX;                               //imposto il dominio AF_UNIX alla struct sockaddr_un
-        int welcomeSocket=socket(AF_UNIX,SOCK_STREAM,0);            //creo il socket connection-oriented
-        bind(welcomeSocket,(struct sockaddr*)&sa_server,sizeof(sa_server)); //associo il socket ad un indirizzo
-        listen(welcomeSocket,SOMAXCONN);                            //segnalo che il socket accetta connessioni
+        int welcomeSocket;
+        checkSyscall(welcomeSocket=socket(AF_UNIX,SOCK_STREAM,0));            //creo il socket connection-oriented
+        checkSyscall(bind(welcomeSocket,(struct sockaddr*)&sa_server,sizeof(sa_server))); //associo il socket ad un indirizzo
+        checkSyscall(listen(welcomeSocket,SOMAXCONN));                            //segnalo che il socket accetta connessioni
 
         fd_set set, rdset;      //creo un fd_set che conterrà l'insieme dei file descriptor da tener traccia e un di quelli pronti alla lettura
         FD_ZERO(&set);          //azzero il set
@@ -96,7 +97,8 @@ int main(int argc, char* argv[]){
                 for (int i=0;i<fd_num+1;i++){                               //passo a pselect sigmask perché voglio che pselect venga interrotta solo dai segnali SIGINT e SIGTERM
                     if (FD_ISSET(i,&rdset)){                                //se il fd è settato a 1 in rdset
                         if (i==welcomeSocket){                              //se è il welcomeSocket
-                            int fd_c=accept(welcomeSocket, NULL,0);         //accetto la connessione    
+                            int fd;
+                            checkSyscall(fd_c=accept(welcomeSocket, NULL,0));         //accetto la connessione    
                             FD_SET(fd_c,&set);                              //aggiungo il fd del client al set di fd
                             if(fd_c>fd_num)                                 //aggiorno il fd MAX
                                 fd_num=fd_c;

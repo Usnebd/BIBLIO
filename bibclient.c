@@ -90,7 +90,9 @@ int main(int argc, char* argv[]){
                     //fa una write unica che contiente tutto
                     char* data=(char*)malloc(BUFFSIZE);
                     unsigned int length;
-                    while(read(serverSocket,data,1)){       //leggo il primo byte della risposta del server
+                    int nread;
+                    while(nread=read(serverSocket,data,1)){       //leggo il primo byte della risposta del server
+                        checkSyscall(nread);
                         switch (*data){
                             case MSG_NO:                    //type="N"
                                 checkSyscall(read(serverSocket,&length,sizeof(unsigned int)));
