@@ -80,7 +80,8 @@ int main(int argc, char* argv[]){
                     strcpy(path,"./");
                     strcat(path,strtok(sockname,":"));
                     strcpy(sa.sun_path,path);
-                    int serverSocket=socket(AF_UNIX,SOCK_STREAM,0);        //creo la socket del client
+                    int serverSocket;
+                    checkSyscall(serverSocket=socket(AF_UNIX,SOCK_STREAM,0));        //creo la socket del client
                     while(connect(serverSocket,(struct sockaddr*)&sa,sizeof(sa)) == -1){       //tento di connettermi con il server
                         if(errno == ENOENT){                                                   //ancora non esiste la socket del server
                             sleep(1);                                                          //attendi
