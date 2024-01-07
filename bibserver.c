@@ -97,7 +97,7 @@ int main(int argc, char* argv[]){
                 for (int i=0;i<fd_num+1;i++){                               //passo a pselect sigmask perché voglio che pselect venga interrotta solo dai segnali SIGINT e SIGTERM
                     if (FD_ISSET(i,&rdset)){                                //se il fd è settato a 1 in rdset
                         if (i==welcomeSocket){                              //se è il welcomeSocket
-                            int fd;
+                            int fd_c;
                             checkSyscall(fd_c=accept(welcomeSocket, NULL,0));         //accetto la connessione    
                             FD_SET(fd_c,&set);                              //aggiungo il fd del client al set di fd
                             if(fd_c>fd_num)                                 //aggiorno il fd MAX
