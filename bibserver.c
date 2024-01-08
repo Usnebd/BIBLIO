@@ -246,6 +246,7 @@ void addBibToConf(char* name_bib){
     size_t size=N;
     char* riga=(char*)malloc(N);
     if(fconf){
+        flockfile(fconf);
         while(!feof(fconf)){                                //finché non sono alla fine del file
             if((getline(&riga,&size,fconf))>1){             //finchè getline legge qualcosa
                 strtok(riga,",");
@@ -259,6 +260,7 @@ void addBibToConf(char* name_bib){
             }
         }
         fprintf(fconf,"BibName:%s,Sockpath:%s\n",name_bib,name_bib);        //aggiungo l'indirizzo del server a bib.conf
+        funlockfile(fconf);
     }else if(ferror(fconf)){
         free(riga);
         perror("errore apertura file bib.conf\n");
