@@ -3,7 +3,7 @@
 #define UNIX_PATH_MAX 80
 #define N 100
 
-volatile int sigflag=0;         //variabile settata dal gestore dei segnali SIGINT e SIGTERM
+volatile sig_atomic_t sigflag=0;         //variabile settata dal gestore dei segnali SIGINT e SIGTERM
 
 int main(int argc, char* argv[]){
     struct sigaction s;
